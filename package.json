@@ -1,0 +1,20 @@
+{
+  "name": "trampo-app",
+  "version": "1.0.0",
+  "description": "<p>Aplicativo voltado para o público geral, tanto para quem busca uma renda-extra ou até mesma uma forma difinitiva de trabalho, quando para quem quer contratar alguém para um trabalho especifico.</p>",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RafaEdu/trampo-app.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/RafaEdu/trampo-app/issues"
+  },
+  "homepage": "https://github.com/RafaEdu/trampo-app#readme"
+}
