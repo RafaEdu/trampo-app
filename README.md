@@ -6,8 +6,8 @@
 
 <h2>Tecnologias usadas:</h2>
   => Utilizado React Native, Node.JS e Supabase.<br>
-  => Versões:
-    =>React:
-    =>Node.js:
+  => Versões:<br>
+    =>React:<br>
+    =>Node.js:<br>
 
 
