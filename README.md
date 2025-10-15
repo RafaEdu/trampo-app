@@ -5,7 +5,7 @@
 <p>De ínicio o objetivo é manter um aplicativo "free to use". AOnde é possível existir uma interação entre contratantes e contratadores.</p>
 
 <h2>Tecnologias usadas:</h2>
-  => Utilizado React Native, Node.JS e Supabase.
+  => Utilizado React Native, Node.JS e Supabase.<br>
   => Versões:
     =>React:
     =>Node.js:
