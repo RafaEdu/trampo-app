@@ -1,20 +1,14 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+// App.js (na raiz do projeto)
+import React from "react";
+import { AuthProvider } from "./src/contexts/AuthContext";
+import Router from "./src/navigation";
 
 export default function App() {
   return (
-    <View style={styles.container}>
-      <Text>Open up App.js to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    // 1. O AuthProvider gerencia se estamos logados ou não
+    <AuthProvider>
+      {/* 2. O Router decide qual tela mostrar com base no AuthProvider */}
+      <Router />
+    </AuthProvider>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
