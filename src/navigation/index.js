@@ -1,40 +1,62 @@
-// src/navigation/index.js
 import React from "react";
+import { View, ActivityIndicator } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 import { useAuth } from "../contexts/AuthContext";
 
+// Telas de Autenticação
 import LoginScreen from "../screens/Login";
-import HomeScreen from "../screens/Home";
-import SignUpScreen from "../screens/SignUp"; // 1. Importe a nova tela
+import SignUpScreen from "../screens/SignUp";
+
+// Nossos novos Navegadores de Tabs
+import ClientTabs from "./ClientTabs";
+import ProviderTabs from "./ProviderTabs";
 
 const Stack = createStackNavigator();
 
 export default function Router() {
-  const { session } = useAuth();
+  // pegamos 'session', 'profile', e o 'loading' inicial
+  const { session, profile, loading } = useAuth();
+
+  // O loading do AuthContext garante que temos a sessão E o perfil
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
 
   return (
     <NavigationContainer>
       <Stack.Navigator>
-        {session && session.user ? (
-          // Telas Autenticadas
-          <Stack.Screen
-            name="Home"
-            component={HomeScreen}
-            options={{ title: "Minha Conta" }}
-          />
+        {session && profile ? (
+          // Se TEM sessão E perfil, decidimos qual App mostrar
+          profile.user_role === "client" ? (
+            <Stack.Screen
+              name="AppClient"
+              component={ClientTabs}
+              options={{ headerShown: false }}
+            />
+          ) : (
+            <Stack.Screen
+              name="AppProvider"
+              component={ProviderTabs}
+              options={{ headerShown: false }}
+            />
+          )
         ) : (
-          // Telas Não Autenticadas
+          // Se NÃO TEM sessão, mostra o fluxo de Autenticação
           <>
             <Stack.Screen
               name="Login"
               component={LoginScreen}
-              options={{ headerShown: false }} // Tela de login sem header
+              options={{ headerShown: false }}
             />
             <Stack.Screen
-              name="SignUp" // 2. Adicione a tela de SignUp
+              name="SignUp"
               component={SignUpScreen}
-              options={{ title: "Criar Conta", headerBackTitle: "Voltar" }} // Damos um título
+              options={{ title: "Criar Conta" }}
             />
           </>
         )}
