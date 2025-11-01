@@ -6,38 +6,84 @@ import {
   Button,
   Alert,
   TouchableOpacity,
+  ScrollView,
 } from "react-native";
 import { useAuth } from "../../contexts/AuthContext";
 import { styles } from "./styles";
 
-// Recebemos o 'navigation' para poder voltar para a tela de Login
 export default function SignUpScreen({ navigation }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const { signUp } = useAuth(); // Pegamos apenas o signUp do nosso hook
+  const [accountType, setAccountType] = useState(null); // 'pf' ou 'pj'
+  const [userRole, setUserRole] = useState(null); // 'provider' ou 'client'
+
+  const { signUp } = useAuth();
 
   const handleSignUp = async () => {
+    // Validação simples
+    if (!accountType || !userRole) {
+      Alert.alert(
+        "Campos incompletos",
+        "Por favor, selecione todos os campos."
+      );
+      return;
+    }
+
     setLoading(true);
-    const { error } = await signUp(email, password);
+
+    // Prepara os dados para enviar ao Supabase
+    const optionsData = {
+      account_type: accountType,
+      user_role: userRole,
+    };
+
+    // Envia os dados junto com email e senha
+    const { error } = await signUp(email, password, optionsData);
+
     if (error) {
       Alert.alert("Erro no Cadastro", error.message);
     } else {
-      // Importante: O Supabase pode exigir confirmação de e-mail.
-      // O listener no nosso AuthContext vai lidar com a sessão,
-      // mas é bom avisar o usuário.
       Alert.alert(
         "Cadastro enviado!",
         "Verifique seu e-mail para confirmar a conta."
       );
-      // Opcional: navegar de volta ao login após o sucesso
       navigation.navigate("Login");
     }
     setLoading(false);
   };
 
+  // Componente auxiliar para os seletores (boa prática)
+  const Selector = ({ label, options, selectedValue, onSelect }) => (
+    <View style={styles.selectorContainer}>
+      <Text style={styles.selectorLabel}>{label}</Text>
+      <View style={styles.selectorOptionsContainer}>
+        {options.map((option) => (
+          <TouchableOpacity
+            key={option.value}
+            style={[
+              styles.selectorButton,
+              selectedValue === option.value && styles.selectorButtonActive,
+            ]}
+            onPress={() => onSelect(option.value)}
+          >
+            <Text
+              style={[
+                styles.selectorButtonText,
+                selectedValue === option.value &&
+                  styles.selectorButtonTextActive,
+              ]}
+            >
+              {option.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+    </View>
+  );
+
   return (
-    <View style={styles.container}>
+    <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>Criar sua Conta</Text>
       <TextInput
         style={styles.input}
@@ -54,6 +100,29 @@ export default function SignUpScreen({ navigation }) {
         onChangeText={setPassword}
         secureTextEntry
       />
+
+      {/* --- NOVOS SELETORES --- */}
+      <Selector
+        label="Eu sou:"
+        options={[
+          { label: "Pessoa Física (PF)", value: "pf" },
+          { label: "Pessoa Jurídica (PJ)", value: "pj" },
+        ]}
+        selectedValue={accountType}
+        onSelect={setAccountType}
+      />
+
+      <Selector
+        label="Eu quero:"
+        options={[
+          { label: "Prestar Serviços", value: "provider" },
+          { label: "Contratar Serviços", value: "client" },
+        ]}
+        selectedValue={userRole}
+        onSelect={setUserRole}
+      />
+      {/* ------------------------- */}
+
       <View style={styles.buttonContainer}>
         <Button
           title={loading ? "Carregando..." : "Cadastrar"}
@@ -62,15 +131,14 @@ export default function SignUpScreen({ navigation }) {
         />
       </View>
 
-      {/* Botão para voltar ao Login */}
       <TouchableOpacity
         style={styles.goBackButton}
-        onPress={() => navigation.goBack()} // Simplesmente volta
+        onPress={() => navigation.goBack()}
       >
         <Text style={styles.goBackButtonText}>
           Já tem uma conta? Entre aqui
         </Text>
       </TouchableOpacity>
-    </View>
+    </ScrollView>
   );
 }

@@ -32,7 +32,17 @@ export const AuthProvider = ({ children }) => {
     loading,
     signIn: (email, password) =>
       supabase.auth.signInWithPassword({ email, password }),
-    signUp: (email, password) => supabase.auth.signUp({ email, password }),
+
+    signUp: (email, password, optionsData) => {
+      return supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          // Estes dados serão enviados para o trigger
+          data: optionsData,
+        },
+      });
+    },
     signOut: () => supabase.auth.signOut(),
   };
 
