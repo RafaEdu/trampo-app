@@ -33,10 +33,18 @@ export default function SetPricesScreen({ route, navigation }) {
         />
       ),
     });
-  }, [navigation, isSaving]);
+  }, [navigation, isSaving, handleSkip]); // Adicionei handleSkip aqui por segurança, mas a correção principal está abaixo
 
   // EFEITO 2: Buscar nomes (Sem alterações)
   useEffect(() => {
+    // Se não tiver serviceIds, não faz sentido estar aqui.
+    // Isso é uma defesa extra caso a tela anterior falhe.
+    if (!serviceIds || serviceIds.length === 0) {
+      console.warn("SetPricesScreen: serviceIds está vazio. Pulando.");
+      forceSetOnboarded();
+      return;
+    }
+
     const fetchServiceNames = async () => {
       setLoading(true);
       const { data, error } = await supabase
@@ -59,23 +67,30 @@ export default function SetPricesScreen({ route, navigation }) {
     };
 
     fetchServiceNames();
-  }, [serviceIds]);
+  }, [serviceIds, forceSetOnboarded]); // Adicionei forceSetOnboarded
 
   // --- FUNÇÃO 'saveServices' CORRIGIDA ---
   const saveServices = async (dataOverride = null) => {
     if (!user) return;
-    setIsSaving(true); // 1. Começa o loading
+    setIsSaving(true);
 
     try {
-      // 2. Prepara os dados
       let dataToInsert;
+
       if (dataOverride) {
-        dataToInsert = services.map((service) => ({
+        // --- ESTA É A CORREÇÃO ---
+        // O "Pular" (dataOverride=true) não deve usar o estado 'services',
+        // que pode estar obsoleto (stale).
+        // Devemos usar o 'serviceIds' que recebemos da rota.
+        console.log("Modo PULAR: Usando serviceIds da rota:", serviceIds);
+        dataToInsert = serviceIds.map((id) => ({
           professional_id: user.id,
-          service_id: service.id,
-          ...dataOverride,
+          service_id: id,
+          ...dataOverride, // Aplica { price: null, unit: null }
         }));
       } else {
+        // O "Concluir" (Salvar) usa o estado 'services' que foi preenchido
+        console.log("Modo SALVAR: Usando 'services' do estado:", services);
         dataToInsert = services.map((service) => ({
           professional_id: user.id,
           service_id: service.id,
@@ -84,37 +99,44 @@ export default function SetPricesScreen({ route, navigation }) {
         }));
       }
 
+      // Este log agora não deve mais mostrar []
+      console.log("Tentando inserir no Supabase:", dataToInsert);
+
+      // Se dataToInsert estiver vazio, pulamos a chamada do Supabase
+      if (dataToInsert.length === 0) {
+        console.warn("Nenhum dado para inserir, pulando.");
+        forceSetOnboarded(); // Apenas navega
+        return;
+      }
+
       // 3. Tenta fazer o insert
       const { error: insertError } = await supabase
         .from("professional_services")
         .insert(dataToInsert);
 
       if (insertError) {
-        throw insertError; // 4. Joga o erro do Supabase para o 'catch'
+        throw insertError;
       }
 
-      // 5. SUCESSO no insert! Agora, tenta atualizar o contexto
-      await refreshOnboardingStatus(user.id);
-
-      // 6. SUCESSO total!
-      // A tela será desmontada pelo Router. Não precisamos chamar
-      // setIsSaving(false) aqui, pois o componente vai sumir.
+      // 5. SUCESSO! Apenas atualiza o estado local.
+      forceSetOnboarded();
     } catch (error) {
-      // 7. PEGA QUALQUER ERRO (do insert OU do refresh)
       console.error("Erro ao salvar serviços:", error.message);
       Alert.alert("Erro ao salvar", error.message);
-
-      // 8. A PARTE MAIS IMPORTANTE: Para o loading em caso de erro.
-      setIsSaving(false);
+      setIsSaving(false); // Só paramos o loading em caso de ERRO
     }
+    // Não definimos setIsSaving(false) em caso de SUCESSO,
+    // pois o componente será desmontado e navegará para outra tela.
   };
 
-  // Botão "Pular" (Sem alterações)
-  const handleSkip = () => {
+  // Botão "Pular"
+  // Usamos 'useCallback' para garantir que a função no header
+  // seja atualizada caso 'saveServices' mude (o que não deve acontecer)
+  const handleSkip = React.useCallback(() => {
     saveServices({ price: null, unit: null });
-  };
+  }, [saveServices]); // 'saveServices' deve ser estável se usarmos useCallback nela também
 
-  // Botão "Concluir" (Sem alterações)
+  // Botão "Concluir"
   const handleSave = () => {
     saveServices();
   };
