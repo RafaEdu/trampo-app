@@ -22,58 +22,51 @@ export default function SearchScreen() {
   const [results, setResults] = useState([]);
   const [categories, setCategories] = useState([]);
 
-  // Nossos estados de busca
   const [userLocation, setUserLocation] = useState(null);
   const [locationError, setLocationError] = useState(null);
   const [searchRadius, setSearchRadius] = useState(10); // Raio padrão de 10km
 
-  // 1. Pedir localização ao carregar a tela
+  // ... (useEffect de requestLocation permanece o mesmo) ...
   useEffect(() => {
-    const requestLocation = async () => {
+    (async () => {
       setLocationError(null);
       let { status } = await Location.requestForegroundPermissionsAsync();
-
       if (status !== "granted") {
         setLocationError("A permissão de localização foi negada.");
-        Alert.alert(
-          "Permissão Necessária",
-          "Para buscar profissionais próximos, precisamos da sua localização."
-        );
+        Alert.alert("Permissão Necessária", "...");
         return;
       }
-
       try {
-        setLoading(true); // Usamos o loading principal
+        setLoading(true);
         let location = await Location.getCurrentPositionAsync({});
         setUserLocation(location.coords);
-        console.log("Localização do cliente obtida:", location.coords);
       } catch (error) {
-        setLocationError("Não foi possível obter a localização.");
-        Alert.alert(
-          "Erro",
-          "Não foi possível obter sua localização. Tente reiniciar o app."
-        );
+        console.warn("Falha ao obter localização real:", error.message);
+        if (__DEV__) {
+          Alert.alert("Modo DEV", "Usando localização simulada (SP).");
+          const mockLocation = { latitude: -23.55052, longitude: -46.633308 };
+          setUserLocation(mockLocation);
+        } else {
+          setLocationError("Não foi possível obter a localização.");
+          Alert.alert("Erro", "Não foi possível obter sua localização.");
+        }
       }
       setLoading(false);
-    };
+    })();
+  }, []);
 
-    requestLocation();
-  }, []); // O array vazio [] garante que isso rode apenas uma vez
-
-  // (useEffect que busca categorias permanece o mesmo)
+  // ... (useEffect de fetchCategories permanece o mesmo) ...
   useEffect(() => {
     const fetchCategories = async () => {
       const { data, error } = await supabase
         .from("service_categories")
         .select("id, name");
-      if (!error && data) {
-        setCategories(data);
-      }
+      if (!error && data) setCategories(data);
     };
     fetchCategories();
   }, []);
 
-  // 2. Função para alterar o raio (simulada com Alert)
+  // ... (handleChangeRadius permanece o mesmo) ...
   const handleChangeRadius = () => {
     Alert.alert(
       "Selecionar Raio",
@@ -88,72 +81,62 @@ export default function SearchScreen() {
     );
   };
 
-  // 3. Função de busca principal
+  // --- FUNÇÃO handleSearch ATUALIZADA ---
   const handleSearch = async () => {
-    // Validação principal: precisamos da localização para buscar
     if (!userLocation) {
-      setLocationError("Sua localização é necessária para a busca.");
-      Alert.alert(
-        "Ops!",
-        "Não conseguimos pegar sua localização. Por favor, habilite nas configurações do seu celular e reabra a tela."
-      );
+      Alert.alert("Ops!", "Aguarde! Estamos pegando sua localização...");
       return;
     }
-
-    // Validação de busca vazia (opcional, mas bom ter)
     if (!searchQuery) {
       Alert.alert("Digite algo", "Digite um nome ou serviço para buscar.");
       return;
     }
 
     setLoading(true);
-    console.log("BUSCANDO NO SUPABASE (simulado):");
-    console.log("Termo:", searchQuery);
-    console.log("Raio:", `${searchRadius}km`);
-    console.log(
-      "Localização (lat/lng):",
-      userLocation.latitude,
-      userLocation.longitude
-    );
+    setResults([]); // Limpa resultados antigos
 
-    // --- AQUI ENTRARÁ A LÓGICA DA RPC ---
-    // (Por enquanto, mantemos a simulação)
-    setTimeout(() => {
-      setResults([
-        {
-          id: 1,
-          full_name: "Rafa, o Eletricista",
-          distance: "2.5km",
-          matched_service: `Serviço relacionado a "${searchQuery}"`,
-          other_services: ["Instalação de tomada", "Reparo elétrico"],
-          price: "120.00",
-        },
-      ]);
-      setLoading(false);
-    }, 1000);
+    // 1. Prepara os argumentos para a RPC
+    const args = {
+      client_lat: userLocation.latitude,
+      client_lng: userLocation.longitude,
+      search_radius_meters: searchRadius * 1000, // Converte KM para Metros!
+      search_term: searchQuery,
+    };
+
+    console.log("Chamando RPC 'search_professionals' com args:", args);
+
+    try {
+      // 2. Chama a função RPC
+      const { data, error } = await supabase.rpc("search_professionals", args);
+
+      if (error) throw error; // Joga para o catch
+
+      // 3. Sucesso!
+      console.log("Resultados da RPC:", data);
+      setResults(data);
+
+      if (data.length === 0) {
+        Alert.alert(
+          "Nenhum resultado",
+          "Nenhum profissional encontrado com esses critérios."
+        );
+      }
+    } catch (error) {
+      console.error("Erro ao chamar RPC:", error.message);
+      Alert.alert(
+        "Erro na Busca",
+        "Ocorreu um erro ao buscar. Tente novamente."
+      );
+    }
+
+    setLoading(false);
   };
+  // --- FIM DA ATUALIZAÇÃO ---
 
   const renderProviderCard = ({ item }) => <ProviderCard provider={item} />;
 
-  // 4. Se não tiver permissão de localização, bloqueamos a tela
-  if (locationError) {
-    return (
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.emptyContainer}>
-          <Text style={styles.errorText}>{locationError}</Text>
-          <Button
-            title="Tentar novamente"
-            onPress={() => {
-              /* Lógica para re-pedir */
-            }}
-          />
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  // 5. Mostra um loading geral enquanto pega a localização inicial
-  if (loading && !results.length) {
+  // ... (o JSX do return permanece o mesmo) ...
+  if (loading && !results.length && !userLocation) {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.emptyContainer}>
@@ -184,12 +167,13 @@ export default function SearchScreen() {
         <View style={styles.filterContainer}>
           <Text style={styles.filterTitle}>Filtros:</Text>
           <Button title="Categorias" onPress={() => {}} />
-          {/* 6. Botão de localização atualizado */}
           <Button
             title={`Raio: ${searchRadius}km`}
             onPress={handleChangeRadius}
           />
         </View>
+
+        {locationError && <Text style={styles.errorText}>{locationError}</Text>}
 
         {loading ? (
           <ActivityIndicator size="large" color="#007aff" />

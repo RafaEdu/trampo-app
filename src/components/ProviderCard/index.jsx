@@ -4,10 +4,9 @@ import { styles } from "./styles";
 import { Ionicons } from "@expo/vector-icons";
 
 export default function ProviderCard({ provider }) {
-  // O 'provider' agora é um objeto mais complexo
   const {
     full_name,
-    distance,
+    distance, // Agora é um NÚMERO
     matched_service,
     other_services = [],
     price,
@@ -16,6 +15,18 @@ export default function ProviderCard({ provider }) {
   // Lógica para o preço (R$ 0,00 é nosso placeholder)
   const displayPrice = price ? `R$ ${parseFloat(price).toFixed(2)}` : "R$ 0,00";
 
+  // --- CORREÇÃO DE BUG ---
+  // Formata o número da distância para uma string amigável
+  // Ex: 2.5134 -> "2.5 km"
+  // Ex: 0.823 -> "823 m"
+  const formatDistance = (dist) => {
+    if (dist < 1) {
+      return `${Math.round(dist * 1000)} m`;
+    }
+    return `${dist.toFixed(1)} km`;
+  };
+  // -------------------------
+
   return (
     <View style={styles.card}>
       {/* Linha 1: Nome e Distância */}
@@ -23,7 +34,8 @@ export default function ProviderCard({ provider }) {
         <Text style={styles.providerName}>{full_name}</Text>
         <View style={styles.distanceContainer}>
           <Ionicons name="location-outline" size={14} color="#555" />
-          <Text style={styles.distanceText}>{distance}</Text>
+          {/* Agora usa a distância formatada */}
+          <Text style={styles.distanceText}>{formatDistance(distance)}</Text>
         </View>
       </View>
 
@@ -34,7 +46,7 @@ export default function ProviderCard({ provider }) {
       </View>
 
       {/* Linha 3: Outros serviços */}
-      {other_services.length > 0 && (
+      {other_services && other_services.length > 0 && (
         <View style={styles.otherServicesContainer}>
           <Text style={styles.otherServicesTitle}>Também oferece:</Text>
           <Text style={styles.otherServicesText} numberOfLines={1}>

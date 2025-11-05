@@ -93,6 +93,7 @@ export const AuthProvider = ({ children }) => {
           setIsProviderOnboarded(isOnboarded);
         }
       }
+      // --- CORREÇÃO 1: O loading só termina DEPOIS de checar tudo. ---
       setLoading(false);
     };
 
@@ -102,6 +103,8 @@ export const AuthProvider = ({ children }) => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      // --- CORREÇÃO 2: Inicia o loading sempre que o auth mudar ---
+      setLoading(true);
       setSession(session);
 
       if (session) {
@@ -120,10 +123,9 @@ export const AuthProvider = ({ children }) => {
         setIsProviderOnboarded(false);
       }
 
-      // Garante que o loading só termine após checar tudo (se houver sessão)
-      if (!session) {
-        setLoading(false);
-      }
+      // --- CORREÇÃO 3: O loading só termina DEPOIS que a checagem do login/logout acabar ---
+      // (removemos o if(!session) que estava aqui)
+      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
@@ -149,6 +151,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Não renderiza nada até termos carregado a sessão E o perfil
+  // Esta lógica agora está correta e vai esperar a checagem de onboarding.
   if (loading) {
     return null;
   }
