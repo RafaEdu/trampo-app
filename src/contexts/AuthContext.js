@@ -57,6 +57,21 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // --- NOSSA NOVA FUNÇÃO ---
+  /**
+   * Força a busca do perfil mais recente no Supabase e atualiza o estado global.
+   */
+  const refreshProfile = async () => {
+    // Pega a sessão atual
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (session) {
+      // Re-busca o perfil com os dados do usuário da sessão
+      await getProfile(session.user);
+    }
+  };
+
   // Esta função será chamada pela tela SetPricesScreen
   const refreshOnboardingStatus = async (userId) => {
     // Apenas re-executa a checagem e atualiza o estado
@@ -139,6 +154,7 @@ export const AuthProvider = ({ children }) => {
     isProviderOnboarded,
     refreshOnboardingStatus,
     forceSetOnboarded,
+    refreshProfile,
     signIn: (email, password) =>
       supabase.auth.signInWithPassword({ email, password }),
     signUp: (email, password, optionsData) =>
