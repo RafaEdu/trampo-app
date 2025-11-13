@@ -8,7 +8,6 @@ import {
   TouchableOpacity,
   ScrollView,
 } from "react-native";
-import { useAuth } from "../../contexts/AuthContext";
 import { styles } from "./styles";
 
 export default function SignUpScreen({ navigation }) {
@@ -18,42 +17,27 @@ export default function SignUpScreen({ navigation }) {
   const [accountType, setAccountType] = useState(null); // 'pf' ou 'pj'
   const [userRole, setUserRole] = useState(null); // 'provider' ou 'client'
 
-  const { signUp } = useAuth();
-
-  const handleSignUp = async () => {
+  const handleNextStep = async () => {
     // Validação simples
-    if (!accountType || !userRole) {
+    if (!accountType || !userRole || !email || !password) {
       Alert.alert(
         "Campos incompletos",
-        "Por favor, selecione todos os campos."
+        "Por favor, preencha todos os campos para avançar."
       );
       return;
     }
 
-    setLoading(true);
-
-    // Prepara os dados para enviar ao Supabase
-    const optionsData = {
-      account_type: accountType,
-      user_role: userRole,
-    };
-
-    // Envia os dados junto com email e senha
-    const { error } = await signUp(email, password, optionsData);
-
-    if (error) {
-      Alert.alert("Erro no Cadastro", error.message);
-    } else {
-      Alert.alert(
-        "Cadastro enviado!",
-        "Verifique seu e-mail para confirmar a conta."
-      );
-      navigation.navigate("Login");
-    }
-    setLoading(false);
+    // Alteração: Em vez de chamar o signUp, navegamos para a próxima etapa
+    // passando os dados coletados.
+    navigation.navigate("CompleteProfile", {
+      email: email,
+      password: password,
+      accountType: accountType,
+      userRole: userRole,
+    });
   };
 
-  // Componente auxiliar para os seletores (boa prática)
+  // Componente auxiliar para os seletores
   const Selector = ({ label, options, selectedValue, onSelect }) => (
     <View style={styles.selectorContainer}>
       <Text style={styles.selectorLabel}>{label}</Text>
@@ -101,7 +85,7 @@ export default function SignUpScreen({ navigation }) {
         secureTextEntry
       />
 
-      {/* --- NOVOS SELETORES --- */}
+      {/* --- SELETORES --- */}
       <Selector
         label="Eu sou:"
         options={[
@@ -126,7 +110,7 @@ export default function SignUpScreen({ navigation }) {
       <View style={styles.buttonContainer}>
         <Button
           title={loading ? "Carregando..." : "Cadastrar"}
-          onPress={handleSignUp}
+          onPress={handleNextStep}
           disabled={loading}
         />
       </View>

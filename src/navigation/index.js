@@ -7,6 +7,7 @@ import { useAuth } from "../contexts/AuthContext";
 // Telas de Autenticação
 import LoginScreen from "../screens/Login";
 import SignUpScreen from "../screens/SignUp";
+import CompleteProfileScreen from "../screens/CompleteProfile";
 
 // Nossos Navegadores de Tabs
 import ClientTabs from "./ClientTabs";
@@ -27,7 +28,12 @@ const AuthStack = () => (
     <Stack.Screen
       name="SignUp"
       component={SignUpScreen}
-      options={{ title: "Criar Conta" }}
+      options={{ title: "Criar Conta (Etapa 1)" }}
+    />
+    <Stack.Screen
+      name="CompleteProfile"
+      component={CompleteProfileScreen}
+      options={{ title: "Criar Conta (Etapa 2)" }}
     />
   </>
 );
@@ -60,10 +66,8 @@ const AppOnboardingStack = () => (
 );
 
 export default function Router() {
-  // pegamos 'session', 'profile', 'loading' E O NOSSO NOVO ESTADO
   const { session, profile, loading, isProviderOnboarded } = useAuth();
 
-  // O loading do AuthContext garante que temos a sessão E o perfil
   if (loading) {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>

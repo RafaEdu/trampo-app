@@ -17,8 +17,10 @@ export const AuthProvider = ({ children }) => {
       if (!user) return null;
 
       const { data, error, status } = await supabase
-        .from("profiles")
-        .select("username, full_name, avatar_url, account_type, user_role")
+        .from("profiles_with_age") // Alteração: Usando a VIEW
+        .select(
+          "username, full_name, avatar_url, account_type, user_role, data_nascimento, cpf_cnpj, document_type, idade" // Alteração: Selecionando os novos campos
+        )
         .eq("id", user.id)
         .single();
 
@@ -157,11 +159,12 @@ export const AuthProvider = ({ children }) => {
     refreshProfile,
     signIn: (email, password) =>
       supabase.auth.signInWithPassword({ email, password }),
+    // A função signUp recebe o optionsData
     signUp: (email, password, optionsData) =>
       supabase.auth.signUp({
         email,
         password,
-        options: { data: optionsData },
+        options: { data: optionsData }, // 'data' é onde o Supabase espera os metadados
       }),
     signOut: () => supabase.auth.signOut(),
   };
