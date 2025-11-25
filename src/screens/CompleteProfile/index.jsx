@@ -87,8 +87,10 @@ export default function CompleteProfileScreen({ route, navigation }) {
   };
 
   const formatarDataParaISO = (dataObj) => {
-    const isoString = dataObj.toISOString();
-    return isoString.split("T")[0];
+    const ano = dataObj.getFullYear();
+    const mes = String(dataObj.getMonth() + 1).padStart(2, "0");
+    const dia = String(dataObj.getDate()).padStart(2, "0");
+    return `${ano}-${mes}-${dia}`;
   };
 
   const handleCompleteSignUp = async () => {
