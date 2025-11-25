@@ -1,12 +1,11 @@
-// src/navigation/ClientTabs.js
 import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
 
-// Nossas telas
 import ClientDashboard from "../screens/ClientDashboard";
 import SearchScreen from "../screens/Search";
 import ProfileScreen from "../screens/Profile";
+import SearchStack from "./SearchStack";
 
 const Tab = createBottomTabNavigator();
 
@@ -33,7 +32,7 @@ export default function ClientTabs() {
       })}
     >
       <Tab.Screen name="Início" component={ClientDashboard} />
-      <Tab.Screen name="Procurar" component={SearchScreen} />
+      <Tab.Screen name="Procurar" component={SearchStack} />
       <Tab.Screen name="Perfil" component={ProfileScreen} />
     </Tab.Navigator>
   );
