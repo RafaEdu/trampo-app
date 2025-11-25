@@ -148,12 +148,25 @@ export const AuthProvider = ({ children }) => {
     return () => subscription.unsubscribe();
   }, []);
 
+  const verifyOtp = async (email, token) => {
+    const { data, error } = await supabase.auth.verifyOtp({
+      email,
+      token,
+      type: "signup",
+    });
+
+    if (error) throw error;
+
+    return data;
+  };
+
   const value = {
     session,
     profile,
     user: session?.user,
     loading,
     isProviderOnboarded,
+    verifyOtp,
     refreshOnboardingStatus,
     forceSetOnboarded,
     refreshProfile,

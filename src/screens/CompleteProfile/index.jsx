@@ -74,9 +74,7 @@ export default function CompleteProfileScreen({ route, navigation }) {
     }
   };
 
-  // Chamamos a função para obter o array
   const documentoMask = getDocumentoMask();
-  // --- FIM DA CORREÇÃO ---
 
   const onChangeDate = (event, selectedDate) => {
     setShowDatePicker(Platform.OS === "ios");
@@ -130,11 +128,7 @@ export default function CompleteProfileScreen({ route, navigation }) {
       Alert.alert("Erro no Cadastro", error.message);
       setLoading(false);
     } else {
-      Alert.alert(
-        "Cadastro enviado!",
-        "Verifique seu e-mail para confirmar a conta e depois faça o login."
-      );
-      navigation.navigate("Login");
+      navigation.navigate("VerifyEmail", { email: email });
     }
   };
 

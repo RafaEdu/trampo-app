@@ -12,6 +12,7 @@ import CompleteProfileScreen from "../screens/CompleteProfile";
 // Nossos Navegadores de Tabs
 import ClientTabs from "./ClientTabs";
 import ProviderTabs from "./ProviderTabs";
+import VerifyEmailScreen from "../screens/VerifyEmail";
 
 import OnboardingStack from "./OnboardingStack";
 
@@ -28,16 +29,20 @@ const AuthStack = () => (
     <Stack.Screen
       name="SignUp"
       component={SignUpScreen}
-      options={{ title: "Criar Conta (Etapa 1)" }}
+      options={{ title: "Criar Conta" }}
     />
     <Stack.Screen
       name="CompleteProfile"
       component={CompleteProfileScreen}
-      options={{ title: "Criar Conta (Etapa 2)" }}
+      options={{ title: "Perfil" }}
+    />
+    <Stack.Screen
+      name="VerifyEmail"
+      component={VerifyEmailScreen}
+      options={{ title: "Verificação" }}
     />
   </>
 );
-
 // Telas do App (CLIENTE)
 const AppClientStack = () => (
   <Stack.Screen
