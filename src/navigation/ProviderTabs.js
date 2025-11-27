@@ -18,7 +18,7 @@ export default function ProviderTabs() {
 
           if (route.name === "Início") {
             iconName = focused ? "home" : "home-outline";
-          } else if (route.name === "Publicar") {
+          } else if (route.name === "Serviços") {
             // "Mais"
             iconName = focused ? "add-circle" : "add-circle-outline";
           } else if (route.name === "Perfil") {
@@ -33,7 +33,7 @@ export default function ProviderTabs() {
       })}
     >
       <Tab.Screen name="Início" component={ProviderDashboard} />
-      <Tab.Screen name="Publicar" component={AddJobScreen} />
+      <Tab.Screen name="Serviços" component={AddJobScreen} />
       <Tab.Screen name="Perfil" component={ProfileScreen} />
     </Tab.Navigator>
   );
