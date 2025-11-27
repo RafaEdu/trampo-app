@@ -6,54 +6,53 @@ import { Ionicons } from "@expo/vector-icons";
 export default function ProviderCard({ provider }) {
   const {
     full_name,
-    distance, // Agora é um NÚMERO
+    distance,
     matched_service,
     other_services = [],
-    price,
   } = provider;
 
-  // Lógica para o preço (R$ 0,00 é nosso placeholder)
-  const displayPrice = price ? `R$ ${parseFloat(price).toFixed(2)}` : "R$ 0,00";
+  // Combina o serviço que deu "match" com os outros para listar
+  // Remove duplicatas e valores vazios
+  const allServices = Array.from(
+    new Set([matched_service, ...other_services])
+  ).filter(Boolean);
 
-  // --- CORREÇÃO DE BUG ---
-  // Formata o número da distância para uma string amigável
-  // Ex: 2.5134 -> "2.5 km"
-  // Ex: 0.823 -> "823 m"
+  // Regra de exibição: Mostrar até 2 serviços, depois "e mais X..."
+  const VISIBLE_LIMIT = 2;
+  const visibleServices = allServices.slice(0, VISIBLE_LIMIT);
+  const remainingCount = allServices.length - VISIBLE_LIMIT;
+
   const formatDistance = (dist) => {
+    if (!dist) return "--";
     if (dist < 1) {
       return `${Math.round(dist * 1000)} m`;
     }
     return `${dist.toFixed(1)} km`;
   };
-  // -------------------------
 
   return (
     <View style={styles.card}>
-      {/* Linha 1: Nome e Distância */}
+      {/* Cabeçalho: Nome e Distância */}
       <View style={styles.cardHeader}>
         <Text style={styles.providerName}>{full_name}</Text>
-        <View style={styles.distanceContainer}>
-          <Ionicons name="location-outline" size={14} color="#555" />
-          {/* Agora usa a distância formatada */}
+        <View style={styles.distanceBadge}>
+          <Ionicons name="location-sharp" size={12} color="white" />
           <Text style={styles.distanceText}>{formatDistance(distance)}</Text>
         </View>
       </View>
 
-      {/* Linha 2: Serviço que deu Match e Preço */}
-      <View style={styles.serviceInfo}>
-        <Text style={styles.matchedService}>{matched_service}</Text>
-        <Text style={styles.price}>{displayPrice}</Text>
-      </View>
-
-      {/* Linha 3: Outros serviços */}
-      {other_services && other_services.length > 0 && (
-        <View style={styles.otherServicesContainer}>
-          <Text style={styles.otherServicesTitle}>Também oferece:</Text>
-          <Text style={styles.otherServicesText} numberOfLines={1}>
-            {other_services.join(", ")}
+      {/* Lista Resumida de Serviços */}
+      <View style={styles.servicesContainer}>
+        <Text style={styles.servicesLabel}>Serviços nesta área:</Text>
+        {visibleServices.map((service, index) => (
+          <Text key={index} style={styles.serviceItem}>
+            • {service}
           </Text>
-        </View>
-      )}
+        ))}
+        {remainingCount > 0 && (
+          <Text style={styles.moreText}>e mais {remainingCount}...</Text>
+        )}
+      </View>
     </View>
   );
 }

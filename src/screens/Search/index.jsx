@@ -2,194 +2,214 @@ import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
-  TextInput,
   FlatList,
   ActivityIndicator,
-  Button,
   TouchableOpacity,
   Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Location from "expo-location";
+import Slider from "@react-native-community/slider";
 import { supabase } from "../../services/supabaseClient";
-import { styles } from "./styles";
 import { Ionicons } from "@expo/vector-icons";
 import ProviderCard from "../../components/ProviderCard";
+import { styles } from "./styles";
 
-// 1. Recebemos a prop 'navigation' aqui
 export default function SearchScreen({ navigation }) {
-  const [searchQuery, setSearchQuery] = useState("");
+  // Estado agora guarda o ID da categoria, não um texto livre
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [categories, setCategories] = useState([]);
+
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState([]);
-  const [categories, setCategories] = useState([]);
 
   const [userLocation, setUserLocation] = useState(null);
   const [locationError, setLocationError] = useState(null);
-  const [searchRadius, setSearchRadius] = useState(10);
 
+  // Raio padrão inicial (ex: 30km)
+  const [searchRadius, setSearchRadius] = useState(30);
+
+  // 1. Pegar Localização
   useEffect(() => {
     (async () => {
-      setLocationError(null);
       let { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
-        setLocationError("A permissão de localização foi negada.");
-        Alert.alert("Permissão Necessária", "...");
+        setLocationError("Permissão negada");
         return;
       }
-      try {
-        setLoading(true);
-        let location = await Location.getCurrentPositionAsync({});
-        setUserLocation(location.coords);
-      } catch (error) {
-        console.warn("Falha ao obter localização real:", error.message);
-        if (__DEV__) {
-          Alert.alert("Modo DEV", "Usando localização simulada (SP).");
-          const mockLocation = { latitude: -23.55052, longitude: -46.633308 };
-          setUserLocation(mockLocation);
-        } else {
-          setLocationError("Não foi possível obter a localização.");
-          Alert.alert("Erro", "Não foi possível obter sua localização.");
-        }
-      }
-      setLoading(false);
+      let location = await Location.getCurrentPositionAsync({});
+      setUserLocation(location.coords);
     })();
   }, []);
 
+  // 2. Pegar Categorias (Mantém igual)
   useEffect(() => {
     const fetchCategories = async () => {
       const { data, error } = await supabase
         .from("service_categories")
-        .select("id, name");
+        .select("id, name")
+        .order("name");
       if (!error && data) setCategories(data);
     };
     fetchCategories();
   }, []);
 
-  const handleChangeRadius = () => {
-    Alert.alert(
-      "Selecionar Raio",
-      "Qual a distância máxima?",
-      [
-        { text: "5 km", onPress: () => setSearchRadius(5) },
-        { text: "10 km", onPress: () => setSearchRadius(10) },
-        { text: "25 km", onPress: () => setSearchRadius(25) },
-        { text: "Cancelar", style: "cancel" },
-      ],
-      { cancelable: true }
-    );
-  };
-
+  // 3. Busca Atualizada
   const handleSearch = async () => {
     if (!userLocation) {
-      Alert.alert("Ops!", "Aguarde! Estamos pegando sua localização...");
+      Alert.alert("Localização", "Aguardando sua localização...");
       return;
     }
-    if (!searchQuery) {
-      Alert.alert("Digite algo", "Digite um nome ou serviço para buscar.");
+    if (!selectedCategory) {
+      Alert.alert("Selecione", "Por favor, escolha uma categoria de serviço.");
       return;
     }
 
     setLoading(true);
     setResults([]);
 
+    // Encontra o objeto da categoria selecionada para pegar o nome (se RPC buscar por texto)
+    // OU passamos o ID se sua RPC suportar filtragem por ID.
+    // Assumindo que o RPC 'search_professionals' usa 'search_term' (texto):
+    const categoryName = categories.find(
+      (c) => c.id === selectedCategory
+    )?.name;
+
     const args = {
       client_lat: userLocation.latitude,
       client_lng: userLocation.longitude,
-      search_radius_meters: searchRadius * 1000,
-      search_term: searchQuery,
+      search_radius_meters: searchRadius * 1000, // km -> metros
+      search_term: categoryName, // Nome da categoria como termo de busca
     };
 
     try {
       const { data, error } = await supabase.rpc("search_professionals", args);
 
       if (error) throw error;
-
       setResults(data);
 
-      if (data.length === 0) {
+      if (data.length === 0)
         Alert.alert(
-          "Nenhum resultado",
-          "Nenhum profissional encontrado com esses critérios."
+          "Ops",
+          "Nenhum profissional nesta área para essa categoria."
         );
-      }
     } catch (error) {
-      console.error("Erro ao chamar RPC:", error.message);
-      Alert.alert(
-        "Erro na Busca",
-        "Ocorreu um erro ao buscar. Tente novamente."
-      );
+      console.error(error);
+      Alert.alert("Erro", "Falha ao buscar profissionais.");
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
-  // 2. Atualizamos o renderItem para ser clicável
+  // Renderiza o card, passando a categoria selecionada para a próxima tela
   const renderProviderCard = ({ item }) => (
     <TouchableOpacity
-      activeOpacity={0.7} // Dá um feedback visual ao tocar
+      activeOpacity={0.9}
       onPress={() => {
-        // Navega para a tela de detalhes passando o objeto 'provider' inteiro via params
-        navigation.navigate("ProviderDetails", { provider: item });
+        navigation.navigate("ProviderDetails", {
+          provider: item,
+          // Passamos o filtro escolhido para a tela de detalhes
+          filterCategoryId: selectedCategory,
+        });
       }}
     >
-      {/* O componente de visualização permanece o mesmo, apenas envolvido pelo toque */}
       <ProviderCard provider={item} />
     </TouchableOpacity>
   );
 
-  if (loading && !results.length && !userLocation) {
+  // Renderiza os "Chips" de categoria
+  const renderCategoryItem = ({ item }) => {
+    const isSelected = selectedCategory === item.id;
     return (
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.emptyContainer}>
-          <ActivityIndicator size="large" color="#007aff" />
-          <Text style={styles.emptyText}>Obtendo sua localização...</Text>
-        </View>
-      </SafeAreaView>
+      <TouchableOpacity
+        style={[styles.categoryChip, isSelected && styles.categoryChipSelected]}
+        onPress={() => setSelectedCategory(item.id)}
+      >
+        <Text
+          style={[
+            styles.categoryText,
+            isSelected && styles.categoryTextSelected,
+          ]}
+        >
+          {item.name}
+        </Text>
+      </TouchableOpacity>
     );
-  }
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
-        <View style={styles.searchContainer}>
-          <TextInput
-            style={styles.searchBar}
-            placeholder="Buscar por nome ou serviço..."
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            onSubmitEditing={handleSearch}
-            returnKeyType="search"
-          />
-          <TouchableOpacity onPress={handleSearch} style={styles.searchButton}>
-            <Ionicons name="search" size={24} color="white" />
-          </TouchableOpacity>
-        </View>
+      <View style={styles.headerContainer}>
+        <Text style={styles.headerTitle}>O que você precisa hoje?</Text>
 
-        <View style={styles.filterContainer}>
-          <Text style={styles.filterTitle}>Filtros:</Text>
-          <Button title="Categorias" onPress={() => {}} />
-          <Button
-            title={`Raio: ${searchRadius}km`}
-            onPress={handleChangeRadius}
+        {/* Lista Horizontal de Categorias */}
+        <View style={styles.categoriesContainer}>
+          <FlatList
+            data={categories}
+            renderItem={renderCategoryItem}
+            keyExtractor={(item) => item.id.toString()}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingRight: 20 }}
           />
         </View>
 
-        {locationError && <Text style={styles.errorText}>{locationError}</Text>}
+        {/* Seletor de Raio (Slider) */}
+        <View style={styles.sliderContainer}>
+          <View style={styles.sliderLabelRow}>
+            <Text style={styles.sliderLabel}>Distância máxima:</Text>
+            <Text style={styles.sliderValue}>{searchRadius} km</Text>
+          </View>
+          <Slider
+            style={{ width: "100%", height: 40 }}
+            minimumValue={1}
+            maximumValue={100}
+            step={1}
+            value={searchRadius}
+            onValueChange={setSearchRadius}
+            minimumTrackTintColor="#007aff"
+            maximumTrackTintColor="#d3d3d3"
+            thumbTintColor="#007aff"
+          />
+        </View>
 
+        {/* Botão de Busca */}
+        <TouchableOpacity
+          style={[
+            styles.searchButton,
+            (!selectedCategory || !userLocation) && styles.searchButtonDisabled,
+          ]}
+          onPress={handleSearch}
+          disabled={!selectedCategory || !userLocation}
+        >
+          <Text style={styles.searchButtonText}>Buscar Profissionais</Text>
+          <Ionicons
+            name="search"
+            size={20}
+            color="white"
+            style={{ marginLeft: 8 }}
+          />
+        </TouchableOpacity>
+      </View>
+
+      {/* Lista de Resultados */}
+      <View style={styles.resultsContainer}>
         {loading ? (
-          <ActivityIndicator size="large" color="#007aff" />
+          <ActivityIndicator
+            size="large"
+            color="#007aff"
+            style={{ marginTop: 20 }}
+          />
         ) : (
           <FlatList
             data={results}
             keyExtractor={(item) => item.id.toString()}
             renderItem={renderProviderCard}
-            style={styles.resultsList}
+            contentContainerStyle={{ paddingBottom: 20 }}
             ListEmptyComponent={() => (
-              <View style={styles.emptyContainer}>
-                <Text style={styles.emptyText}>
-                  Busque por um profissional ou serviço.
-                </Text>
-              </View>
+              <Text style={styles.emptyText}>
+                Selecione uma categoria e ajuste a distância para buscar.
+              </Text>
             )}
           />
         )}
