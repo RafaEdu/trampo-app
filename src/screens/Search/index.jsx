@@ -16,7 +16,8 @@ import { styles } from "./styles";
 import { Ionicons } from "@expo/vector-icons";
 import ProviderCard from "../../components/ProviderCard";
 
-export default function SearchScreen() {
+// 1. Recebemos a prop 'navigation' aqui
+export default function SearchScreen({ navigation }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState([]);
@@ -24,9 +25,8 @@ export default function SearchScreen() {
 
   const [userLocation, setUserLocation] = useState(null);
   const [locationError, setLocationError] = useState(null);
-  const [searchRadius, setSearchRadius] = useState(10); // Raio padrão de 10km
+  const [searchRadius, setSearchRadius] = useState(10);
 
-  // ... (useEffect de requestLocation permanece o mesmo) ...
   useEffect(() => {
     (async () => {
       setLocationError(null);
@@ -55,7 +55,6 @@ export default function SearchScreen() {
     })();
   }, []);
 
-  // ... (useEffect de fetchCategories permanece o mesmo) ...
   useEffect(() => {
     const fetchCategories = async () => {
       const { data, error } = await supabase
@@ -66,7 +65,6 @@ export default function SearchScreen() {
     fetchCategories();
   }, []);
 
-  // ... (handleChangeRadius permanece o mesmo) ...
   const handleChangeRadius = () => {
     Alert.alert(
       "Selecionar Raio",
@@ -81,7 +79,6 @@ export default function SearchScreen() {
     );
   };
 
-  // --- FUNÇÃO handleSearch ATUALIZADA ---
   const handleSearch = async () => {
     if (!userLocation) {
       Alert.alert("Ops!", "Aguarde! Estamos pegando sua localização...");
@@ -93,26 +90,20 @@ export default function SearchScreen() {
     }
 
     setLoading(true);
-    setResults([]); // Limpa resultados antigos
+    setResults([]);
 
-    // 1. Prepara os argumentos para a RPC
     const args = {
       client_lat: userLocation.latitude,
       client_lng: userLocation.longitude,
-      search_radius_meters: searchRadius * 1000, // Converte KM para Metros!
+      search_radius_meters: searchRadius * 1000,
       search_term: searchQuery,
     };
 
-    console.log("Chamando RPC 'search_professionals' com args:", args);
-
     try {
-      // 2. Chama a função RPC
       const { data, error } = await supabase.rpc("search_professionals", args);
 
-      if (error) throw error; // Joga para o catch
+      if (error) throw error;
 
-      // 3. Sucesso!
-      console.log("Resultados da RPC:", data);
       setResults(data);
 
       if (data.length === 0) {
@@ -131,11 +122,21 @@ export default function SearchScreen() {
 
     setLoading(false);
   };
-  // --- FIM DA ATUALIZAÇÃO ---
 
-  const renderProviderCard = ({ item }) => <ProviderCard provider={item} />;
+  // 2. Atualizamos o renderItem para ser clicável
+  const renderProviderCard = ({ item }) => (
+    <TouchableOpacity
+      activeOpacity={0.7} // Dá um feedback visual ao tocar
+      onPress={() => {
+        // Navega para a tela de detalhes passando o objeto 'provider' inteiro via params
+        navigation.navigate("ProviderDetails", { provider: item });
+      }}
+    >
+      {/* O componente de visualização permanece o mesmo, apenas envolvido pelo toque */}
+      <ProviderCard provider={item} />
+    </TouchableOpacity>
+  );
 
-  // ... (o JSX do return permanece o mesmo) ...
   if (loading && !results.length && !userLocation) {
     return (
       <SafeAreaView style={styles.safeArea}>

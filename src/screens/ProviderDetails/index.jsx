@@ -10,9 +10,10 @@ import {
 } from "react-native";
 import { supabase } from "../../services/supabaseClient";
 import { useAuth } from "../../contexts/AuthContext";
+import { styles } from "./styles";
 
 export default function ProviderDetailsScreen({ route, navigation }) {
-  const { provider } = route.params; // Recebemos o objeto provider da tela anterior
+  const { provider } = route.params;
   const { user } = useAuth();
 
   const [description, setDescription] = useState("");
@@ -28,8 +29,7 @@ export default function ProviderDetailsScreen({ route, navigation }) {
 
     const { error } = await supabase.from("bookings").insert({
       client_id: user.id,
-      professional_id: provider.id, // ID do prestador vindo da navegação
-      // service_id: provider.service_id, // Se você tiver esse dado no card, pode passar
+      professional_id: provider.id,
       description: description,
       status: "pending",
     });
@@ -41,7 +41,7 @@ export default function ProviderDetailsScreen({ route, navigation }) {
       console.error(error);
     } else {
       Alert.alert("Sucesso!", "Seu pedido foi enviado. Aguarde a confirmação.");
-      navigation.navigate("Início"); // Volta para o dashboard
+      navigation.navigate("Início");
     }
   };
 
@@ -68,18 +68,3 @@ export default function ProviderDetailsScreen({ route, navigation }) {
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { padding: 20, backgroundColor: "#fff", flex: 1 },
-  name: { fontSize: 24, fontWeight: "bold", marginBottom: 20, color: "#333" },
-  label: { fontSize: 16, marginBottom: 10, color: "#555" },
-  input: {
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 8,
-    padding: 10,
-    marginBottom: 20,
-    textAlignVertical: "top",
-    height: 100,
-  },
-});

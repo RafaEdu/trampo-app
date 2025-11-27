@@ -1,7 +1,7 @@
 import React from "react";
 import { createStackNavigator } from "@react-navigation/stack";
 import SearchScreen from "../screens/Search";
-import ProviderDetailsScreen from "../screens/ProviderDetails"; // Vamos criar essa tela já já
+import ProviderDetailsScreen from "../screens/ProviderDetails";
 
 const Stack = createStackNavigator();
 
