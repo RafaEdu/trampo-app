@@ -362,7 +362,7 @@ date_part('year', age(data_nascimento)) AS idade
 FROM public.profiles;
 ```
 
-## 8. omentários
+## 8. Comentários
 
 ### 8.1. Tabelas e colunas
 
