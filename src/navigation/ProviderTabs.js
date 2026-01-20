@@ -18,9 +18,8 @@ export default function ProviderTabs() {
 
           if (route.name === "Início") {
             iconName = focused ? "home" : "home-outline";
-          } else if (route.name === "Publicar") {
-            // "Mais"
-            iconName = focused ? "add-circle" : "add-circle-outline";
+          } else if (route.name === "Serviços") {
+            iconName = focused ? "list" : "list-outline";
           } else if (route.name === "Perfil") {
             iconName = focused ? "person" : "person-outline";
           }
@@ -29,11 +28,11 @@ export default function ProviderTabs() {
         },
         tabBarActiveTintColor: "#007aff",
         tabBarInactiveTintColor: "gray",
-        headerShown: false, // Escondemos também
+        headerShown: false,
       })}
     >
       <Tab.Screen name="Início" component={ProviderDashboard} />
-      <Tab.Screen name="Publicar" component={AddJobScreen} />
+      <Tab.Screen name="Serviços" component={AddJobScreen} />
       <Tab.Screen name="Perfil" component={ProfileScreen} />
     </Tab.Navigator>
   );
