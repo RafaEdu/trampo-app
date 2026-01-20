@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
-  SectionList, // Usamos SectionList em vez de FlatList
+  SectionList,
   TouchableOpacity,
   ActivityIndicator,
   Button,
@@ -14,18 +14,17 @@ import { styles } from "./styles";
 
 export default function SelectServicesScreen({ route, navigation }) {
   // 1. Recebe os IDs da tela anterior
-  const { categoryIds } = route.params;
+  const { categoryIds } = route.params || { categoryIds: [] };
 
   const [groupedServices, setGroupedServices] = useState([]);
-  const [selectedServices, setSelectedServices] = useState([]);
+  const [selectedServicesIds, setSelectedServicesIds] = useState([]); // Renomeado para deixar claro que são IDs
+  const [allServices, setAllServices] = useState([]); // Novo estado para guardar os objetos completos
   const [loading, setLoading] = useState(true);
 
-  // Esta função transforma os dados crus do Supabase
-  // no formato que o SectionList espera: [ { title: '...', data: [...] } ]
+  // Formata os dados para o SectionList
   const formatDataForSectionList = (categories, services) => {
     return categories.map((category) => ({
-      title: category.name, // Ex: "Eletricista"
-      // Filtra apenas os serviços que pertencem a esta categoria
+      title: category.name,
       data: services.filter((service) => service.category_id === category.id),
     }));
   };
@@ -34,15 +33,11 @@ export default function SelectServicesScreen({ route, navigation }) {
     const fetchServices = async () => {
       setLoading(true);
       try {
-        // Usa Promise.all para fazer as duas
-        // buscas ao banco de dados em paralelo. É mais rápido!
         const [categoriesResponse, servicesResponse] = await Promise.all([
-          // Busca 1: Os nomes das categorias que foi selecionado
           supabase
             .from("service_categories")
             .select("id, name")
             .in("id", categoryIds),
-          // Busca 2: Todos os serviços que pertencem a essas categorias
           supabase
             .from("services")
             .select("id, name, category_id")
@@ -52,10 +47,12 @@ export default function SelectServicesScreen({ route, navigation }) {
         if (categoriesResponse.error) throw categoriesResponse.error;
         if (servicesResponse.error) throw servicesResponse.error;
 
-        // 3. Formata os dados para o SectionList
+        // Guarda todos os serviços para uso posterior na navegação
+        setAllServices(servicesResponse.data);
+
         const formattedData = formatDataForSectionList(
           categoriesResponse.data,
-          servicesResponse.data
+          servicesResponse.data,
         );
 
         setGroupedServices(formattedData);
@@ -66,25 +63,35 @@ export default function SelectServicesScreen({ route, navigation }) {
       setLoading(false);
     };
 
-    fetchServices();
-  }, [categoryIds]); // Roda a busca se os categoryIds mudarem
+    if (categoryIds?.length > 0) {
+      fetchServices();
+    } else {
+      setLoading(false);
+    }
+  }, [categoryIds]);
 
   const toggleSelectService = (id) => {
-    setSelectedServices((prevSelected) =>
+    setSelectedServicesIds((prevSelected) =>
       prevSelected.includes(id)
         ? prevSelected.filter((servId) => servId !== id)
-        : [...prevSelected, id]
+        : [...prevSelected, id],
     );
   };
 
   const handleNextStep = () => {
-    // 5. Envia os IDs dos serviços selecionados para a próxima tela
-    navigation.navigate("SetPrices", { serviceIds: selectedServices });
+    // CORREÇÃO: Filtra os objetos completos dos serviços baseados nos IDs selecionados
+    const selectedServicesFullObjects = allServices.filter((service) =>
+      selectedServicesIds.includes(service.id),
+    );
+
+    // Envia o array de objetos (selectedServices) em vez de apenas IDs
+    navigation.navigate("SetPrices", {
+      selectedServices: selectedServicesFullObjects,
+    });
   };
 
-  // Renderiza o item de serviço (mesma lógica da tela anterior)
   const renderServiceItem = ({ item }) => {
-    const isSelected = selectedServices.includes(item.id);
+    const isSelected = selectedServicesIds.includes(item.id);
     return (
       <TouchableOpacity
         style={[styles.itemContainer, isSelected && styles.itemSelected]}
@@ -98,7 +105,6 @@ export default function SelectServicesScreen({ route, navigation }) {
     );
   };
 
-  // Renderiza o título da categoria (Ex: "Eletricista")
   const renderSectionHeader = ({ section: { title } }) => (
     <View style={styles.sectionHeaderContainer}>
       <Text style={styles.sectionHeaderText}>{title}</Text>
@@ -130,15 +136,13 @@ export default function SelectServicesScreen({ route, navigation }) {
         renderSectionHeader={renderSectionHeader}
         showsVerticalScrollIndicator={false}
         style={styles.listContainer}
-        // 3. REMOVER o ListFooterComponent daqui
       />
 
-      {/* 4. Botão movido para fora da lista e dentro do View 'footer' */}
       <View style={styles.footer}>
         <Button
           title="Avançar"
           onPress={handleNextStep}
-          disabled={selectedServices.length === 0}
+          disabled={selectedServicesIds.length === 0}
         />
       </View>
     </SafeAreaView>
