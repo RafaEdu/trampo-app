@@ -1,104 +1,149 @@
 import { StyleSheet } from "react-native";
 
-export const styles = StyleSheet.create({
-  // Containers
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#f5f5f5",
-  },
+// Cores baseadas no que vi do projeto (ajuste para seu tema global depois)
+const COLORS = {
+  primary: "#4A90E2", // Azul padrão de apps de serviço
+  background: "#F5F7FA",
+  card: "#FFFFFF",
+  text: "#333333",
+  textLight: "#666666",
+  border: "#E0E0E0",
+  success: "#28A745",
+};
 
+export const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
+    backgroundColor: COLORS.background,
   },
-
-  listContainer: {
-    // Note: FlatList usa 'contentContainerStyle' para padding interno
-    // mas o estilo do componente em si também é útil.
-    paddingHorizontal: 20,
-    paddingTop: 10,
-  },
-
-  // Cabeçalho da Tela
   header: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 10,
+    padding: 20,
+    backgroundColor: COLORS.card,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
   },
-
   title: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: "bold",
-    color: "#333",
+    color: COLORS.text,
     marginBottom: 8,
   },
-
   subtitle: {
-    fontSize: 16,
-    color: "#666",
+    fontSize: 14,
+    color: COLORS.textLight,
+    lineHeight: 20,
   },
-
-  loadingText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: "#666",
-  },
-
-  // Card do Serviço
-  serviceCard: {
-    backgroundColor: "white",
+  listContent: {
     padding: 16,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#ddd",
-    marginBottom: 15,
+    paddingBottom: 100, // Espaço para o footer
   },
-
-  serviceName: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#333",
-    marginBottom: 10,
+  card: {
+    backgroundColor: COLORS.card,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    // Sombra sutil para elevação
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 3.84,
+    elevation: 2,
   },
-
-  // Inputs
-  inputGroup: {
+  cardHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
+    alignItems: "center",
   },
-
-  inputContainer: {
-    flex: 1, // Faz os inputs dividirem o espaço
-  },
-
-  inputLabel: {
-    fontSize: 14,
-    color: "#666",
-    marginBottom: 5,
-  },
-
-  textInput: {
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
+  serviceName: {
     fontSize: 16,
-  },
-  // Adiciona uma margem à direita para o primeiro input
-  priceInput: {
+    fontWeight: "600",
+    color: COLORS.text,
+    flex: 1,
     marginRight: 10,
   },
-  // Adiciona uma margem à esquerda para o segundo input
-  unitInput: {
-    marginLeft: 10,
+  switchContainer: {
+    alignItems: "flex-end",
   },
-
-  // Footer (Botão)
+  switchLabel: {
+    fontSize: 10,
+    color: COLORS.textLight,
+    marginBottom: 4,
+    textTransform: "uppercase",
+  },
+  inputsContainer: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+  },
+  inputGroup: {
+    marginBottom: 12,
+  },
+  label: {
+    fontSize: 12,
+    color: COLORS.textLight,
+    marginBottom: 6,
+    fontWeight: "500",
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 8,
+    padding: 10,
+    fontSize: 16,
+    color: COLORS.text,
+    backgroundColor: "#FAFAFA",
+  },
+  unitSelector: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  unitBadge: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    backgroundColor: "#F0F0F0",
+    borderWidth: 1,
+    borderColor: "transparent",
+  },
+  unitBadgeSelected: {
+    backgroundColor: "#E3F2FD",
+    borderColor: COLORS.primary,
+  },
+  unitText: {
+    fontSize: 12,
+    color: COLORS.textLight,
+  },
+  unitTextSelected: {
+    color: COLORS.primary,
+    fontWeight: "600",
+  },
   footer: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
     padding: 20,
-    backgroundColor: "#f5f5f5",
+    backgroundColor: COLORS.card,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+  },
+  buttonPrimary: {
+    backgroundColor: COLORS.primary,
+    paddingVertical: 14,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  buttonText: {
+    color: "#FFF",
+    fontSize: 16,
+    fontWeight: "bold",
   },
 });
+
+export default styles;

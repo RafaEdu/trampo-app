@@ -3,227 +3,225 @@ import {
   View,
   Text,
   FlatList,
+  TouchableOpacity,
   TextInput,
-  ActivityIndicator,
-  Button,
+  Switch,
   Alert,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
+import { useNavigation, useRoute } from "@react-navigation/native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "../../../services/supabaseClient";
 import { useAuth } from "../../../contexts/AuthContext";
 import { styles } from "./styles";
 
-export default function SetPricesScreen({ route, navigation }) {
-  const { serviceIds } = route.params;
-  const { user, forceSetOnboarded } = useAuth();
+const UNIT_OPTIONS = [
+  { label: "Preço Fixo (por serviço)", value: "servico" },
+  { label: "Por Hora", value: "hora" },
+  { label: "Por Dia (Diária)", value: "dia" },
+  { label: "Por Metro Quadrado (m²)", value: "m2" },
+  { label: "Por Unidade/Peça", value: "unidade" },
+];
 
-  const [services, setServices] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
+const SetPricesScreen = () => {
+  const navigation = useNavigation();
+  const route = useRoute();
+  const { user } = useAuth(); // Pegando o usuário logado
 
-  // EFEITO 1: Botão "Pular" (Sem alterações)
-  useLayoutEffect(() => {
-    navigation.setOptions({
-      headerRight: () => (
-        <Button
-          onPress={handleSkip}
-          title="Pular"
-          color="#007aff"
-          disabled={isSaving}
-        />
-      ),
-    });
-  }, [navigation, isSaving, handleSkip]); // Adicionei handleSkip aqui por segurança, mas a correção principal está abaixo
+  // Recebe os serviços selecionados da tela anterior (array de objetos {id, name, ...})
+  const { selectedServices } = route.params || { selectedServices: [] };
 
-  // EFEITO 2: Buscar nomes (Sem alterações)
+  const [loading, setLoading] = useState(false);
+
+  // Estado para controlar os preços e unidades de cada serviço
+  // Estrutura: { [serviceId]: { price: string, unit: string, isNegotiable: boolean } }
+  const [pricesState, setPricesState] = useState({});
+
   useEffect(() => {
-    // Se não tiver serviceIds, não faz sentido estar aqui.
-    // Isso é uma defesa extra caso a tela anterior falhe.
-    if (!serviceIds || serviceIds.length === 0) {
-      console.warn("SetPricesScreen: serviceIds está vazio. Pulando.");
-      forceSetOnboarded();
-      return;
-    }
+    // Inicializa o estado. Por padrão, tudo é "A combinar" (isNegotiable: true)
+    // Isso reduz a fricção inicial do usuário.
+    const initialState = {};
+    selectedServices.forEach((service) => {
+      initialState[service.id] = {
+        price: "",
+        unit: "servico", // Valor default do enum
+        isNegotiable: true,
+      };
+    });
+    setPricesState(initialState);
+  }, [selectedServices]);
 
-    const fetchServiceNames = async () => {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from("services")
-        .select("id, name")
-        .in("id", serviceIds);
+  const updateServiceState = (serviceId, field, value) => {
+    setPricesState((prev) => ({
+      ...prev,
+      [serviceId]: {
+        ...prev[serviceId],
+        [field]: value,
+      },
+    }));
+  };
 
-      if (error) {
-        Alert.alert("Erro", "Não foi possível carregar os serviços.");
-      } else {
-        setServices(
-          data.map((service) => ({
-            ...service,
-            price: "",
-            unit: "",
-          }))
-        );
-      }
-      setLoading(false);
-    };
-
-    fetchServiceNames();
-  }, [serviceIds, forceSetOnboarded]); // Adicionei forceSetOnboarded
-
-  // --- FUNÇÃO 'saveServices' CORRIGIDA ---
-  const saveServices = async (dataOverride = null) => {
+  const handleFinishOnboarding = async () => {
     if (!user) return;
-    setIsSaving(true);
+    setLoading(true);
 
     try {
-      let dataToInsert;
+      // 1. Preparar o payload para o Supabase
+      const servicesPayload = selectedServices.map((service) => {
+        const config = pricesState[service.id];
 
-      if (dataOverride) {
-        // --- ESTA É A CORREÇÃO ---
-        // O "Pular" (dataOverride=true) não deve usar o estado 'services',
-        // que pode estar obsoleto (stale).
-        // Devemos usar o 'serviceIds' que recebemos da rota.
-        console.log("Modo PULAR: Usando serviceIds da rota:", serviceIds);
-        dataToInsert = serviceIds.map((id) => ({
-          professional_id: user.id,
-          service_id: id,
-          ...dataOverride, // Aplica { price: null, unit: null }
-        }));
-      } else {
-        // O "Concluir" (Salvar) usa o estado 'services' que foi preenchido
-        console.log("Modo SALVAR: Usando 'services' do estado:", services);
-        dataToInsert = services.map((service) => ({
-          professional_id: user.id,
+        // Se for negociável, mandamos null no preço (ou 0, dependendo da sua constraint check)
+        // A unidade mandamos o default ou o selecionado para manter integridade
+        const priceValue = config.isNegotiable
+          ? null
+          : parseFloat(config.price.replace(",", "."));
+
+        return {
+          professional_id: user.id, // ID do profile (uuid)
           service_id: service.id,
-          price: service.price || null,
-          unit: service.unit || null,
-        }));
-      }
+          price: isNaN(priceValue) ? null : priceValue,
+          unit: config.unit,
+          // created_at é default now()
+        };
+      });
 
-      // Este log agora não deve mais mostrar []
-      console.log("Tentando inserir no Supabase:", dataToInsert);
-
-      // Se dataToInsert estiver vazio, pulamos a chamada do Supabase
-      if (dataToInsert.length === 0) {
-        console.warn("Nenhum dado para inserir, pulando.");
-        forceSetOnboarded(); // Apenas navega
-        return;
-      }
-
-      // 3. Tenta fazer o insert
-      const { error: insertError } = await supabase
+      // 2. Bulk Insert (Inserção em lote) para performance (<100ms latency goal)
+      const { error } = await supabase
         .from("professional_services")
-        .insert(dataToInsert);
+        .insert(servicesPayload);
 
-      if (insertError) {
-        throw insertError;
-      }
+      if (error) throw error;
 
-      // 5. SUCESSO! Apenas atualiza o estado local.
-      forceSetOnboarded();
+      // 3. Atualizar status do profile ou navegar para Dashboard
+      // Opcional: Atualizar alguma flag no profile dizendo que o onboarding acabou
+
+      Alert.alert("Sucesso", "Seus serviços foram cadastrados!");
+
+      // Reseta a navegação para a Dashboard do Provider
+      navigation.reset({
+        index: 0,
+        routes: [{ name: "ProviderTabs" }],
+      });
     } catch (error) {
-      console.error("Erro ao salvar serviços:", error.message);
-      Alert.alert("Erro ao salvar", error.message);
-      setIsSaving(false); // Só paramos o loading em caso de ERRO
+      console.error("Erro ao salvar serviços:", error);
+      Alert.alert(
+        "Erro",
+        "Não foi possível salvar seus serviços. Tente novamente."
+      );
+    } finally {
+      setLoading(false);
     }
-    // Não definimos setIsSaving(false) em caso de SUCESSO,
-    // pois o componente será desmontado e navegará para outra tela.
   };
 
-  // Botão "Pular"
-  // Usamos 'useCallback' para garantir que a função no header
-  // seja atualizada caso 'saveServices' mude (o que não deve acontecer)
-  const handleSkip = React.useCallback(() => {
-    saveServices({ price: null, unit: null });
-  }, [saveServices]); // 'saveServices' deve ser estável se usarmos useCallback nela também
+  const renderServiceItem = ({ item }) => {
+    const config = pricesState[item.id] || {};
+    const isNegotiable = config.isNegotiable;
 
-  // Botão "Concluir"
-  const handleSave = () => {
-    saveServices();
-  };
-
-  // Funções de input (Sem alterações)
-  const handlePriceChange = (id, price) => {
-    setServices((currentServices) =>
-      currentServices.map((service) =>
-        service.id === id ? { ...service, price: price } : service
-      )
-    );
-  };
-
-  const handleUnitChange = (id, unit) => {
-    setServices((currentServices) =>
-      currentServices.map((service) =>
-        service.id === id ? { ...service, unit: unit } : service
-      )
-    );
-  };
-
-  // --- RENDERIZAÇÃO (Sem alterações) ---
-  if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007aff" />
-        <Text style={styles.loadingText}>Carregando serviços...</Text>
+      <View style={styles.card}>
+        <View style={styles.cardHeader}>
+          <Text style={styles.serviceName}>{item.name}</Text>
+          <View style={styles.switchContainer}>
+            <Text style={styles.switchLabel}>
+              {isNegotiable ? "A Combinar" : "Definir valor"}
+            </Text>
+            <Switch
+              value={isNegotiable}
+              onValueChange={(val) =>
+                updateServiceState(item.id, "isNegotiable", val)
+              }
+              trackColor={{ false: "#767577", true: "#4A90E2" }} // Use as cores do seu tema
+              thumbColor={isNegotiable ? "#f4f3f4" : "#f4f3f4"}
+            />
+          </View>
+        </View>
+
+        {!isNegotiable && (
+          <View style={styles.inputsContainer}>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Valor (R$)</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="0,00"
+                keyboardType="numeric"
+                value={config.price}
+                onChangeText={(text) =>
+                  updateServiceState(item.id, "price", text)
+                }
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Cobrado por</Text>
+              {/* Simplificação de Select para UX Mobile */}
+              <View style={styles.unitSelector}>
+                {UNIT_OPTIONS.map((opt) => (
+                  <TouchableOpacity
+                    key={opt.value}
+                    style={[
+                      styles.unitBadge,
+                      config.unit === opt.value && styles.unitBadgeSelected,
+                    ]}
+                    onPress={() =>
+                      updateServiceState(item.id, "unit", opt.value)
+                    }
+                  >
+                    <Text
+                      style={[
+                        styles.unitText,
+                        config.unit === opt.value && styles.unitTextSelected,
+                      ]}
+                    >
+                      {opt.value === "servico" ? "Fixo" : opt.value}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          </View>
+        )}
       </View>
     );
-  }
-
-  const renderServiceCard = ({ item }) => (
-    <View style={styles.serviceCard}>
-      <Text style={styles.serviceName}>{item.name}</Text>
-      <View style={styles.inputGroup}>
-        <View style={[styles.inputContainer, styles.priceInput]}>
-          <Text style={styles.inputLabel}>Preço (R$)</Text>
-          <TextInput
-            style={styles.textInput}
-            value={item.price}
-            onChangeText={(text) => handlePriceChange(item.id, text)}
-            keyboardType="numeric"
-            placeholder="Ex: 50.00"
-            editable={!isSaving}
-          />
-        </View>
-
-        <View style={[styles.inputContainer, styles.unitInput]}>
-          <Text style={styles.inputLabel}>Unidade</Text>
-          <TextInput
-            style={styles.textInput}
-            value={item.unit}
-            onChangeText={(text) => handleUnitChange(item.id, text)}
-            placeholder="Ex: hora, serviço"
-            editable={!isSaving}
-          />
-        </View>
-      </View>
-    </View>
-  );
+  };
 
   return (
-    <SafeAreaView style={styles.container}>
-      {isSaving && <ActivityIndicator size="large" color="#007aff" />}
-
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={styles.container}
+    >
       <View style={styles.header}>
-        <Text style={styles.title}>Defina seus preços (Opcional)</Text>
+        <Text style={styles.title}>Definir Preços</Text>
         <Text style={styles.subtitle}>
-          Você pode pular esta etapa e preencher depois.
+          Você pode definir um preço base ou deixar como "A Combinar" para
+          negociar no chat.
         </Text>
       </View>
 
       <FlatList
-        data={services}
-        keyExtractor={(item) => item.id.toString()}
-        renderItem={renderServiceCard}
-        contentContainerStyle={styles.listContainer}
+        data={selectedServices}
+        keyExtractor={(item) => String(item.id)}
+        renderItem={renderServiceItem}
+        contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
       />
 
       <View style={styles.footer}>
-        <Button
-          title="Concluir e Salvar"
-          onPress={handleSave}
-          disabled={isSaving}
-        />
+        <TouchableOpacity
+          style={styles.buttonPrimary}
+          onPress={handleFinishOnboarding}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#FFF" />
+          ) : (
+            <Text style={styles.buttonText}>Concluir Cadastro</Text>
+          )}
+        </TouchableOpacity>
       </View>
-    </SafeAreaView>
+    </KeyboardAvoidingView>
   );
-}
+};
+
+export default SetPricesScreen;
