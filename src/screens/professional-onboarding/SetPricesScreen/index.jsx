@@ -11,7 +11,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
-import { useNavigation, useRoute } from "@react-navigation/native"; // Removido CommonActions
+import { useNavigation, useRoute } from "@react-navigation/native";
 import { supabase } from "../../../services/supabaseClient";
 import { useAuth } from "../../../contexts/AuthContext";
 import { styles } from "./styles";
@@ -27,7 +27,9 @@ const UNIT_OPTIONS = [
 const SetPricesScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
-  const { user } = useAuth();
+
+  // CORREÇÃO: Importamos a função que atualiza o estado global de onboarding
+  const { user, forceSetOnboarded } = useAuth();
 
   const { selectedServices = [] } = route.params || {};
 
@@ -58,19 +60,6 @@ const SetPricesScreen = () => {
     }));
   };
 
-  const navigateToDashboard = () => {
-    // CORREÇÃO: Usamos .navigate() em vez de .reset()
-    // O .navigate procura a rota "ProviderTabs" em qualquer lugar da árvore de navegação.
-    // Isso resolve o erro "action RESET was not handled".
-    try {
-      navigation.navigate("ProviderTabs");
-    } catch (error) {
-      console.error("Erro de navegação:", error);
-      // Fallback caso o nome da rota esteja diferente no seu index.js
-      Alert.alert("Erro", "Não foi possível redirecionar para o Dashboard.");
-    }
-  };
-
   const handleFinishOnboarding = async () => {
     if (!user) return;
     setLoading(true);
@@ -97,14 +86,16 @@ const SetPricesScreen = () => {
       if (error) throw error;
 
       Alert.alert("Sucesso", "Seus serviços foram cadastrados!");
-      navigateToDashboard();
+
+      // CORREÇÃO: Não navegamos manualmente.
+      // Apenas atualizamos o estado. O Router fará a troca de telas automaticamente.
+      forceSetOnboarded();
     } catch (error) {
-      // CORREÇÃO: Se der erro de duplicidade (código 23505),
-      // significa que já foi salvo no clique anterior.
-      // Apenas redirecionamos o usuário sem mostrar erro.
+      // Se der erro de duplicidade (código 23505),
+      // significa que já foi salvo. Redirecionamos via estado também.
       if (error.code === "23505") {
         console.log("Serviços já cadastrados, redirecionando...");
-        navigateToDashboard();
+        forceSetOnboarded();
       } else {
         console.error("Erro ao salvar serviços:", error);
         Alert.alert(

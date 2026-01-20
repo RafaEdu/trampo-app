@@ -17,9 +17,9 @@ export const AuthProvider = ({ children }) => {
       if (!user) return null;
 
       const { data, error, status } = await supabase
-        .from("profiles_with_age") // Alteração: Usando a VIEW
+        .from("profiles_with_age")
         .select(
-          "username, full_name, avatar_url, account_type, user_role, data_nascimento, cpf_cnpj, document_type, idade" // Alteração: Selecionando os novos campos
+          "username, full_name, avatar_url, account_type, user_role, data_nascimento, cpf_cnpj, document_type, idade", // Alteração: Selecionando os novos campos
         )
         .eq("id", user.id)
         .single();
