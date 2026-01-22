@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import {
   View,
   Text,
@@ -8,11 +8,13 @@ import {
   Image,
   ActivityIndicator,
   Keyboard,
+  Alert,
 } from "react-native";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import Slider from "@react-native-community/slider";
 import { Ionicons } from "@expo/vector-icons";
-import { supabase } from "../../services/supabaseClient"; // Ajuste o caminho conforme sua estrutura
+import * as Location from "expo-location";
+import { supabase } from "../../services/supabaseClient";
 import styles from "./styles";
 
 export default function SearchScreen() {
@@ -21,114 +23,133 @@ export default function SearchScreen() {
 
   // Estados
   const [searchText, setSearchText] = useState("");
-  const [radius, setRadius] = useState(50); // Padrão 50km
+  const [radius, setRadius] = useState(50);
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // Mock da localização do usuário atual (Em produção, use expo-location)
-  // Substitua isso pela lógica real do seu UserContext ou Location Context
-  const currentUserLocation = {
-    latitude: -23.55052, // Exemplo: São Paulo
-    longitude: -46.633308,
-  };
+  // Localização
+  const [userLocation, setUserLocation] = useState(null);
+  const [locationError, setLocationError] = useState(null);
 
-  /**
-   * Lógica de Foco e Teclado:
-   * Sempre que a tela ganha foco (entra nela ou volta pra ela),
-   * o input ganha foco e o teclado sobe.
-   */
+  // 1. Obter Localização Real
+  useEffect(() => {
+    (async () => {
+      try {
+        let { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== "granted") {
+          setLocationError("Permissão de localização negada");
+          return;
+        }
+
+        let location = await Location.getCurrentPositionAsync({});
+        setUserLocation(location.coords);
+      } catch (error) {
+        console.error("Erro GPS:", error);
+        setLocationError("Erro ao obter localização");
+      }
+    })();
+  }, []);
+
+  // Foco no input ao abrir
   useFocusEffect(
     useCallback(() => {
-      // Pequeno delay para garantir que a animação de transição de tela terminou
       const timeout = setTimeout(() => {
         if (inputRef.current) {
           inputRef.current.focus();
         }
       }, 100);
-
       return () => clearTimeout(timeout);
     }, []),
   );
 
   /**
-   * Função de Busca no Supabase via RPC
+   * Função de Busca
    */
   const handleSearch = async () => {
-    if (!searchText.trim()) return;
+    if (!userLocation) {
+      Alert.alert("Aguarde", "Obtendo sua localização...");
+      return;
+    }
 
     setLoading(true);
-    Keyboard.dismiss(); // Opcional: baixar teclado ao buscar, ou manter se preferir
+    Keyboard.dismiss();
 
     try {
       const { data, error } = await supabase.rpc("search_providers_geo", {
-        user_lat: currentUserLocation.latitude,
-        user_long: currentUserLocation.longitude,
+        user_lat: userLocation.latitude,
+        user_long: userLocation.longitude,
         radius_km: radius,
-        search_text: searchText,
+        search_text: searchText || "", // Garante string vazia se for null
       });
 
       if (error) throw error;
-      setResults(data || []);
+
+      // PROTEÇÃO CONTRA O ERRO DE UNDEFINED
+      // Filtramos itens que porventura venham nulos ou sem ID
+      const validData = (data || []).filter((item) => item && item.id);
+
+      setResults(validData);
     } catch (error) {
       console.error("Erro na busca:", error.message);
+      Alert.alert("Erro", "Não foi possível realizar a busca.");
     } finally {
       setLoading(false);
     }
   };
 
-  /**
-   * Lógica do botão Voltar
-   * Limpa o texto e volta para Home.
-   */
   const handleGoBack = () => {
-    setSearchText(""); // Requisito: apagar texto ao voltar pela seta
+    setSearchText("");
     setResults([]);
     navigation.goBack();
   };
 
   /**
-   * Renderização de cada Card de Provider
+   * Renderização do Card com Proteção de Nulos
    */
-  const renderProviderItem = ({ item }) => (
-    <TouchableOpacity
-      style={styles.card}
-      onPress={() =>
-        navigation.navigate("ProviderDetails", { providerId: item.id })
-      }
-    >
-      {/* Esquerda: Foto (Topo ao Bottom) */}
-      <Image
-        source={{ uri: item.avatar_url || "https://via.placeholder.com/150" }}
-        style={styles.cardImage}
-        resizeMode="cover"
-      />
+  const renderProviderItem = ({ item }) => {
+    // Dupla checagem para evitar o erro "Cannot read property... of undefined"
+    if (!item || !item.id) return null;
 
-      {/* Direita: Informações Centralizadas */}
-      <View style={styles.cardContent}>
-        <Text style={styles.providerName} numberOfLines={2}>
-          {item.full_name || item.username}
-        </Text>
+    return (
+      <TouchableOpacity
+        style={styles.card}
+        onPress={() =>
+          navigation.navigate("ProviderDetails", { providerId: item.id })
+        }
+      >
+        <Image
+          source={{ uri: item.avatar_url || "https://via.placeholder.com/150" }}
+          style={styles.cardImage}
+          resizeMode="cover"
+        />
 
-        {/* Sistema de Avaliação (Mock visual por enquanto) */}
-        <View style={styles.ratingContainer}>
-          <Ionicons name="star" size={16} color="#FFD700" />
-          <Text style={styles.ratingText}>
-            {item.average_rating
-              ? Number(item.average_rating).toFixed(1)
-              : "Novo"}
+        <View style={styles.cardContent}>
+          <Text style={styles.providerName} numberOfLines={2}>
+            {item.full_name || item.username || "Profissional"}
+          </Text>
+
+          <View style={styles.ratingContainer}>
+            <Ionicons name="star" size={16} color="#FFD700" />
+            <Text style={styles.ratingText}>
+              {item.average_rating
+                ? Number(item.average_rating).toFixed(1)
+                : "Novo"}
+            </Text>
+          </View>
+
+          <Text style={styles.distanceText}>
+            {item.distance_km !== undefined && item.distance_km !== null
+              ? `${item.distance_km.toFixed(1)} km`
+              : "-- km"}
           </Text>
         </View>
-
-        <Text style={styles.distanceText}>
-          {item.distance_km ? `${item.distance_km.toFixed(1)} km` : ""}
-        </Text>
-      </View>
-    </TouchableOpacity>
-  );
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <View style={styles.container}>
-      {/* Header com SearchBar */}
+      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={handleGoBack} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#333" />
@@ -144,17 +165,22 @@ export default function SearchScreen() {
           <TextInput
             ref={inputRef}
             style={styles.searchInput}
-            placeholder="Buscar serviços, prestadores..."
+            placeholder={
+              locationError
+                ? "Localização indisponível"
+                : "Buscar serviços, prestadores..."
+            }
             placeholderTextColor="#999"
             value={searchText}
             onChangeText={setSearchText}
-            onSubmitEditing={handleSearch} // Enter do teclado dispara a busca
+            onSubmitEditing={handleSearch}
             returnKeyType="search"
+            editable={!locationError}
           />
         </View>
       </View>
 
-      {/* Slider de Raio */}
+      {/* Filtros */}
       <View style={styles.filterContainer}>
         <Text style={styles.filterLabel}>Raio de busca: {radius} km</Text>
         <Slider
@@ -164,13 +190,18 @@ export default function SearchScreen() {
           step={1}
           value={radius}
           onValueChange={setRadius}
-          minimumTrackTintColor="#007AFF" // Cor primária do app (ajuste conforme tema)
+          minimumTrackTintColor="#007AFF"
           maximumTrackTintColor="#000000"
           thumbTintColor="#007AFF"
         />
+        {!userLocation && !locationError && (
+          <Text style={{ fontSize: 12, color: "#666", marginTop: 4 }}>
+            Localizando você...
+          </Text>
+        )}
       </View>
 
-      {/* Lista de Resultados */}
+      {/* Lista */}
       {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#007AFF" />
@@ -178,13 +209,17 @@ export default function SearchScreen() {
       ) : (
         <FlatList
           data={results}
-          keyExtractor={(item) => item.id.toString()}
+          // PROTEÇÃO NO KEY EXTRACTOR
+          keyExtractor={(item, index) =>
+            item?.id ? item.id.toString() : `fallback-${index}`
+          }
           renderItem={renderProviderItem}
           contentContainerStyle={styles.listContent}
           ListEmptyComponent={
-            searchText.length > 0 && !loading ? (
+            searchText.length > 0 ? (
               <Text style={styles.emptyText}>
-                Nenhum prestador encontrado nesta região.
+                Nenhum prestador encontrado. Tente aumentar o raio ou mudar o
+                termo.
               </Text>
             ) : null
           }
