@@ -21,7 +21,9 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "permissions": ["android.permission.RECORD_AUDIO"],
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ],
       "package": "com.rafadreissig.trampoapp"
     },
     "web": {
@@ -33,7 +35,8 @@
         {
           "photosPermission": "O Trampo App precisa de acesso à sua galeria para que você possa escolher uma foto de perfil."
         }
-      ]
+      ],
+      "expo-font"
     ],
     "extra": {
       "eas": {
