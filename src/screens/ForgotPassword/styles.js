@@ -7,16 +7,49 @@ export const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
     padding: 20,
     backgroundColor: "#f5f5f5",
+    justifyContent: "center",
+    alignItems: "center",
+    position: "relative", // Necessário para o Toast absoluto
+  },
+  // ESTILOS DO TOAST
+  toastContainer: {
+    position: "absolute",
+    top: 50, // Distância do topo
+    left: 20,
+    right: 20,
+    backgroundColor: "#4CAF50", // Verde sucesso
+    padding: 15,
+    borderRadius: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+    zIndex: 1000, // Fica acima de tudo
+  },
+  toastText: {
+    color: "white",
+    fontSize: 14,
+    fontWeight: "bold",
+    marginLeft: 10,
+    textAlign: "center",
   },
   title: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: "bold",
-    marginBottom: 24,
+    marginBottom: 10,
     color: "#333",
+  },
+  description: {
+    fontSize: 14,
+    color: "#666",
+    marginBottom: 24,
+    textAlign: "center",
   },
   input: {
     width: "100%",
@@ -29,7 +62,6 @@ export const styles = StyleSheet.create({
     marginBottom: 12,
     fontSize: 16,
   },
-  // Novos estilos para o container da senha
   passwordContainer: {
     flexDirection: "row",
     width: "100%",
@@ -54,20 +86,10 @@ export const styles = StyleSheet.create({
     width: "100%",
     marginTop: 10,
   },
-  forgotPasswordButton: {
-    marginTop: 15,
-  },
-  forgotPasswordText: {
-    color: "#555",
-    textDecorationLine: "underline",
-  },
-  signUpButton: {
+  cancelButton: {
     marginTop: 20,
-    padding: 10,
   },
-  signUpButtonText: {
-    fontSize: 14,
-    color: "#007aff",
-    textAlign: "center",
+  cancelButtonText: {
+    color: "#555",
   },
 });

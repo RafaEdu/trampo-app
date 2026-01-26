@@ -1,4 +1,3 @@
-// src/screens/Login/index.jsx
 import React, { useState } from "react";
 import {
   View,
@@ -6,18 +5,23 @@ import {
   TextInput,
   Button,
   Alert,
-  TouchableOpacity, // Importamos o TouchableOpacity
+  TouchableOpacity,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons"; // Para o ícone do olho
 import { useAuth } from "../../contexts/AuthContext";
-import { styles } from "./styles"; // Vamos precisar adicionar um estilo novo
+import { styles } from "./styles";
 
-// Agora recebemos 'navigation' para poder ir para a tela de Cadastro
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Note que não pedimos mais o 'signUp' aqui
+  // Novo estado para controlar a visibilidade da senha
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+
   const { signIn } = useAuth();
 
   const handleLogin = async () => {
@@ -26,48 +30,75 @@ export default function LoginScreen({ navigation }) {
     if (error) {
       Alert.alert("Erro no Login", error.message);
     }
-    // Não precisamos fazer mais nada, o listener no AuthContext
-    // vai detectar a sessão e o Router vai trocar a tela.
     setLoading(false);
   };
 
-  // Removemos a função handleSignUp
-
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Trampo App</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="E-mail"
-        value={email}
-        onChangeText={setEmail}
-        autoCapitalize="none"
-        keyboardType="email-address"
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Senha"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-      />
-      <View style={styles.buttonContainer}>
-        <Button
-          title={loading ? "Carregando..." : "Entrar"}
-          onPress={handleLogin}
-          disabled={loading}
-        />
-      </View>
+    // KeyboardAvoidingView para o teclado não tampar os inputs
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={{ flex: 1 }}
+    >
+      <ScrollView contentContainerStyle={styles.scrollContainer}>
+        <View style={styles.container}>
+          <Text style={styles.title}>Trampo App</Text>
 
-      {/* Removemos o botão de Cadastrar e colocamos um link */}
-      <TouchableOpacity
-        style={styles.signUpButton} // Usaremos um estilo novo
-        onPress={() => navigation.navigate("SignUp")} // Navega para a tela
-      >
-        <Text style={styles.signUpButtonText}>
-          Ainda não tem conta? Cadastre-se
-        </Text>
-      </TouchableOpacity>
-    </View>
+          <TextInput
+            style={styles.input}
+            placeholder="E-mail"
+            value={email}
+            onChangeText={setEmail}
+            autoCapitalize="none"
+            keyboardType="email-address"
+          />
+
+          {/* Container personalizado para Senha + Ícone */}
+          <View style={styles.passwordContainer}>
+            <TextInput
+              style={styles.passwordInput}
+              placeholder="Senha"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!isPasswordVisible} // Controlado pelo estado
+            />
+            <TouchableOpacity
+              onPress={() => setIsPasswordVisible(!isPasswordVisible)}
+              style={styles.eyeIcon}
+            >
+              <Ionicons
+                name={isPasswordVisible ? "eye-off" : "eye"}
+                size={24}
+                color="gray"
+              />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.buttonContainer}>
+            <Button
+              title={loading ? "Carregando..." : "Entrar"}
+              onPress={handleLogin}
+              disabled={loading}
+            />
+          </View>
+
+          {/* Botão de Esqueci Minha Senha */}
+          <TouchableOpacity
+            style={styles.forgotPasswordButton}
+            onPress={() => navigation.navigate("ForgotPassword")}
+          >
+            <Text style={styles.forgotPasswordText}>Esqueci minha senha</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.signUpButton}
+            onPress={() => navigation.navigate("SignUp")}
+          >
+            <Text style={styles.signUpButtonText}>
+              Ainda não tem conta? Cadastre-se
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }

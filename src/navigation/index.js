@@ -8,6 +8,7 @@ import { useAuth } from "../contexts/AuthContext";
 import LoginScreen from "../screens/Login";
 import SignUpScreen from "../screens/SignUp";
 import CompleteProfileScreen from "../screens/CompleteProfile";
+import ForgotPasswordScreen from "../screens/ForgotPassword";
 
 // Nossos Navegadores de Tabs
 import ClientTabs from "./ClientTabs";
@@ -30,6 +31,11 @@ const AuthStack = () => (
       name="SignUp"
       component={SignUpScreen}
       options={{ title: "Criar Conta" }}
+    />
+    <Stack.Screen
+      name="ForgotPassword"
+      component={ForgotPasswordScreen}
+      options={{ title: "Recuperar Senha" }}
     />
     <Stack.Screen
       name="CompleteProfile"
@@ -85,16 +91,12 @@ export default function Router() {
     <NavigationContainer>
       <Stack.Navigator>
         {!session || !profile
-          ? // 1. Se NÃO TEM sessão ou perfil, mostra o fluxo de Autenticação
-            AuthStack()
+          ? AuthStack()
           : profile.user_role === "client"
-            ? // 2. Se TEM sessão E é CLIENTE, mostra o app de cliente
-              AppClientStack()
+            ? AppClientStack()
             : profile.user_role === "provider" && isProviderOnboarded
-              ? // 3. Se TEM sessão, é PROVIDER E JÁ FEZ ONBOARDING, mostra o app de provider
-                AppProviderStack()
-              : // 4. Se TEM sessão, é PROVIDER E NÃO FEZ ONBOARDING, mostra o fluxo de onboarding
-                AppOnboardingStack()}
+              ? AppProviderStack()
+              : AppOnboardingStack()}
       </Stack.Navigator>
     </NavigationContainer>
   );

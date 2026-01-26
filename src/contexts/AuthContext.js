@@ -1,4 +1,10 @@
-import React, { createContext, useState, useEffect, useContext } from "react";
+import React, {
+  createContext,
+  useState,
+  useEffect,
+  useContext,
+  useRef,
+} from "react";
 import { supabase } from "../services/supabaseClient";
 
 const AuthContext = createContext();
@@ -7,142 +13,101 @@ export const AuthProvider = ({ children }) => {
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
-
-  // Este estado vai controlar se o provider já se configurou.
   const [isProviderOnboarded, setIsProviderOnboarded] = useState(false);
 
-  // Esta função vai buscar o perfil do usuário no Supabase
+  const isPasswordResetting = useRef(false);
+
   const getProfile = async (user) => {
     try {
       if (!user) return null;
-
       const { data, error, status } = await supabase
         .from("profiles_with_age")
         .select(
-          "username, full_name, avatar_url, account_type, user_role, data_nascimento, cpf_cnpj, document_type, idade", // Alteração: Selecionando os novos campos
+          "username, full_name, avatar_url, account_type, user_role, data_nascimento, cpf_cnpj, document_type, idade",
         )
         .eq("id", user.id)
         .single();
 
-      if (error && status !== 406) {
-        throw error;
-      }
-
+      if (error && status !== 406) throw error;
       if (data) {
         setProfile(data);
-        return data; // Retorna o perfil para a próxima função
+        return data;
       }
     } catch (error) {
       console.error("Erro ao buscar perfil:", error.message);
     }
-    return null; // Retorna nulo em caso de falha
+    return null;
   };
 
-  // Verifica se o profissional já cadastrou pelo menos um serviço
   const checkProviderOnboarding = async (userId) => {
     try {
-      // Usamos { count: 'exact', head: true }
-      // Isso faz o Supabase retornar APENAS a contagem (count) e não os dados.
-      // É muito mais rápido e eficiente para verificar existência.
       const { error, count } = await supabase
         .from("professional_services")
         .select("id", { count: "exact", head: true })
         .eq("professional_id", userId);
-
       if (error) throw error;
-
-      // Se tiver 1 ou mais serviços, está "onboarded"
       return count > 0;
     } catch (error) {
       console.error("Erro ao checar onboarding:", error.message);
-      return false; // Em caso de erro, assume que não completou
+      return false;
     }
   };
 
-  // --- NOSSA NOVA FUNÇÃO ---
-  /**
-   * Força a busca do perfil mais recente no Supabase e atualiza o estado global.
-   */
   const refreshProfile = async () => {
-    // Pega a sessão atual
     const {
       data: { session },
     } = await supabase.auth.getSession();
-    if (session) {
-      // Re-busca o perfil com os dados do usuário da sessão
-      await getProfile(session.user);
-    }
+    if (session) await getProfile(session.user);
   };
 
-  // Esta função será chamada pela tela SetPricesScreen
   const refreshOnboardingStatus = async (userId) => {
-    // Apenas re-executa a checagem e atualiza o estado
     if (userId) {
       const isOnboarded = await checkProviderOnboarding(userId);
       setIsProviderOnboarded(isOnboarded);
     }
   };
 
-  // Esta função é "burra". Ela apenas seta o estado,
-  // sem fazer chamadas de API. É usada pela SetPricesScreen
-  // que JÁ SABE que o insert foi um sucesso.
-  const forceSetOnboarded = () => {
-    setIsProviderOnboarded(true);
+  const forceSetOnboarded = () => setIsProviderOnboarded(true);
+
+  // --- Lógica de Sessão ---
+  const handleSessionSetup = async (currentSession) => {
+    setSession(currentSession);
+    if (currentSession) {
+      const userProfile = await getProfile(currentSession.user);
+      if (userProfile && userProfile.user_role === "provider") {
+        const isOnboarded = await checkProviderOnboarding(
+          currentSession.user.id,
+        );
+        setIsProviderOnboarded(isOnboarded);
+      } else {
+        setIsProviderOnboarded(false);
+      }
+    } else {
+      setProfile(null);
+      setIsProviderOnboarded(false);
+    }
+    setLoading(false);
   };
 
   useEffect(() => {
     setLoading(true);
 
-    const setupSession = async () => {
-      // Tenta pegar a sessão que já existe
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      setSession(session);
+    // Setup inicial
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      handleSessionSetup(session);
+    });
 
-      if (session) {
-        // Se a sessão existir, busca o perfil
-        const userProfile = await getProfile(session.user);
-
-        // Se for um provider, checa se ele já se configurou
-        if (userProfile && userProfile.user_role === "provider") {
-          const isOnboarded = await checkProviderOnboarding(session.user.id);
-          setIsProviderOnboarded(isOnboarded);
-        }
-      }
-      // --- CORREÇÃO 1: O loading só termina DEPOIS de checar tudo. ---
-      setLoading(false);
-    };
-
-    setupSession();
-
-    // Escuta mudanças no estado de autenticação (login, logout)
+    // Listener de mudanças
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      // --- CORREÇÃO 2: Inicia o loading sempre que o auth mudar ---
-      setLoading(true);
-      setSession(session);
-
-      if (session) {
-        // Usuário logou, busca o perfil
-        const userProfile = await getProfile(session.user);
-
-        if (userProfile && userProfile.user_role === "provider") {
-          const isOnboarded = await checkProviderOnboarding(session.user.id);
-          setIsProviderOnboarded(isOnboarded);
-        } else {
-          setIsProviderOnboarded(false); // Reseta se for cliente
-        }
-      } else {
-        // Usuário deslogou, limpa o perfil e o estado de onboarding
-        setProfile(null);
-        setIsProviderOnboarded(false);
+      // SE estivermos resetando a senha, IGNORAMOS eventos automáticos (como o login do verifyOtp)
+      // Isso evita que o App redirecione para a Home antes da hora.
+      if (isPasswordResetting.current) {
+        return;
       }
-
-      // --- CORREÇÃO 3: O loading só termina DEPOIS que a checagem do login/logout acabar ---
-      // (removemos o if(!session) que estava aqui)
-      setLoading(false);
+      setLoading(true);
+      await handleSessionSetup(session);
     });
 
     return () => subscription.unsubscribe();
@@ -154,10 +119,52 @@ export const AuthProvider = ({ children }) => {
       token,
       type: "signup",
     });
-
     if (error) throw error;
-
     return data;
+  };
+
+  const sendPasswordReset = async (email) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email);
+    if (error) throw error;
+  };
+
+  const completePasswordReset = async (email, token, newPassword) => {
+    // 1. Ativa a trava para impedir que o Router mude de tela sozinho
+    isPasswordResetting.current = true;
+
+    try {
+      // 2. Verifica Código (Isso gera uma sessão no Supabase, mas ignoramos no State)
+      const { data, error } = await supabase.auth.verifyOtp({
+        email,
+        token,
+        type: "recovery",
+      });
+      if (error) throw error;
+
+      // 3. Tenta atualizar a senha
+      if (data.session) {
+        const { error: updateError } = await supabase.auth.updateUser({
+          password: newPassword,
+        });
+
+        // SE FALHAR (ex: senha igual):
+        if (updateError) {
+          // Deslogamos imediatamente para limpar a sessão "suja" criada no passo 2
+          await supabase.auth.signOut();
+          throw updateError; // Joga o erro para a tela exibir
+        }
+
+        // SE SUCESSO:
+        // Atualizamos manualmente o estado do App agora que tudo deu certo.
+        // Isso evita a "tela branca" pois esperamos carregar tudo antes de soltar a trava.
+        await handleSessionSetup(data.session);
+      }
+    } catch (error) {
+      throw error;
+    } finally {
+      // Solta a trava
+      isPasswordResetting.current = false;
+    }
   };
 
   const value = {
@@ -167,30 +174,21 @@ export const AuthProvider = ({ children }) => {
     loading,
     isProviderOnboarded,
     verifyOtp,
+    sendPasswordReset,
+    completePasswordReset,
     refreshOnboardingStatus,
     forceSetOnboarded,
     refreshProfile,
     signIn: (email, password) =>
       supabase.auth.signInWithPassword({ email, password }),
-    // A função signUp recebe o optionsData
     signUp: (email, password, optionsData) =>
-      supabase.auth.signUp({
-        email,
-        password,
-        options: { data: optionsData }, // 'data' é onde o Supabase espera os metadados
-      }),
+      supabase.auth.signUp({ email, password, options: { data: optionsData } }),
     signOut: () => supabase.auth.signOut(),
   };
 
-  // Não renderiza nada até termos carregado a sessão E o perfil
-  // Esta lógica agora está correta e vai esperar a checagem de onboarding.
-  if (loading) {
-    return null;
-  }
+  if (loading) return null;
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
-export const useAuth = () => {
-  return useContext(AuthContext);
-};
+export const useAuth = () => useContext(AuthContext);
