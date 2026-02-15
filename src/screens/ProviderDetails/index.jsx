@@ -8,10 +8,16 @@ import {
   ActivityIndicator,
   FlatList,
   Alert,
+  Modal,
+  TextInput,
+  Platform,
+  KeyboardAvoidingView,
 } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { supabase } from "../../services/supabaseClient";
+import { useAuth } from "../../contexts/AuthContext";
 import styles from "./styles";
 
 // Mock da Galeria (Fictício)
@@ -42,10 +48,20 @@ export default function ProviderDetails() {
   const navigation = useNavigation();
   const route = useRoute();
   const { providerId } = route.params;
+  const { user } = useAuth();
 
   const [provider, setProvider] = useState(null);
   const [groupedServices, setGroupedServices] = useState({}); // Objeto { "Categoria": [serviços...] }
   const [loading, setLoading] = useState(true);
+
+  // Estado do Modal de Agendamento
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedService, setSelectedService] = useState(null);
+  const [scheduledDate, setScheduledDate] = useState(new Date());
+  const [description, setDescription] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
 
   useEffect(() => {
     fetchProviderData();
@@ -112,10 +128,88 @@ export default function ProviderDetails() {
   };
 
   const handleBookService = (serviceItem) => {
-    Alert.alert(
-      "Contratar",
-      `Deseja solicitar o serviço: ${serviceItem.services.name}?`,
-    );
+    setSelectedService(serviceItem);
+    setScheduledDate(new Date());
+    setDescription("");
+    setModalVisible(true);
+  };
+
+  const handleDateChange = (event, selected) => {
+    setShowDatePicker(false);
+    if (selected) {
+      const updated = new Date(scheduledDate);
+      updated.setFullYear(
+        selected.getFullYear(),
+        selected.getMonth(),
+        selected.getDate(),
+      );
+      setScheduledDate(updated);
+    }
+  };
+
+  const handleTimeChange = (event, selected) => {
+    setShowTimePicker(false);
+    if (selected) {
+      const updated = new Date(scheduledDate);
+      updated.setHours(selected.getHours(), selected.getMinutes());
+      setScheduledDate(updated);
+    }
+  };
+
+  const formatDate = (date) => {
+    return date.toLocaleDateString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  };
+
+  const formatTime = (date) => {
+    return date.toLocaleTimeString("pt-BR", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  const handleConfirmBooking = async () => {
+    if (!user) {
+      Alert.alert("Erro", "Você precisa estar logado para agendar um serviço.");
+      return;
+    }
+
+    if (scheduledDate <= new Date()) {
+      Alert.alert("Data inválida", "Selecione uma data e hora futura.");
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+
+      const { error } = await supabase.from("bookings").insert({
+        client_id: user.id,
+        professional_id: providerId,
+        service_id: selectedService.services.id,
+        scheduled_date: scheduledDate.toISOString(),
+        description: description.trim() || null,
+        status: "pending",
+      });
+
+      if (error) throw error;
+
+      setModalVisible(false);
+      Alert.alert(
+        "Agendamento solicitado!",
+        `Seu pedido para "${selectedService.services.name}" foi enviado com sucesso. Aguarde a confirmação do profissional.`,
+      );
+    } catch (error) {
+      console.error("Erro ao agendar serviço:", error.message);
+      Alert.alert(
+        "Erro",
+        "Não foi possível realizar o agendamento. Tente novamente.",
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (loading) {
@@ -230,6 +324,124 @@ export default function ProviderDetails() {
           ))}
         </View>
       </ScrollView>
+
+      {/* MODAL DE AGENDAMENTO */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => !submitting && setModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          style={styles.modalOverlay}
+        >
+          <View style={styles.modalContent}>
+            {/* Header do Modal */}
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Agendar Serviço</Text>
+              <TouchableOpacity
+                onPress={() => setModalVisible(false)}
+                disabled={submitting}
+              >
+                <Ionicons name="close" size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
+
+            {selectedService && (
+              <Text style={styles.modalServiceName}>
+                {selectedService.services?.name}
+              </Text>
+            )}
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {/* Seletor de Data */}
+              <Text style={styles.modalLabel}>Data</Text>
+              <TouchableOpacity
+                style={styles.datePickerButton}
+                onPress={() => setShowDatePicker(true)}
+              >
+                <Ionicons name="calendar-outline" size={20} color="#007AFF" />
+                <Text style={styles.datePickerText}>
+                  {formatDate(scheduledDate)}
+                </Text>
+              </TouchableOpacity>
+
+              {showDatePicker && (
+                <DateTimePicker
+                  value={scheduledDate}
+                  mode="date"
+                  display={Platform.OS === "ios" ? "spinner" : "default"}
+                  minimumDate={new Date()}
+                  onChange={handleDateChange}
+                />
+              )}
+
+              {/* Seletor de Hora */}
+              <Text style={styles.modalLabel}>Horário</Text>
+              <TouchableOpacity
+                style={styles.datePickerButton}
+                onPress={() => setShowTimePicker(true)}
+              >
+                <Ionicons name="time-outline" size={20} color="#007AFF" />
+                <Text style={styles.datePickerText}>
+                  {formatTime(scheduledDate)}
+                </Text>
+              </TouchableOpacity>
+
+              {showTimePicker && (
+                <DateTimePicker
+                  value={scheduledDate}
+                  mode="time"
+                  display={Platform.OS === "ios" ? "spinner" : "default"}
+                  is24Hour={true}
+                  onChange={handleTimeChange}
+                />
+              )}
+
+              {/* Campo de Descrição */}
+              <Text style={styles.modalLabel}>Descrição (opcional)</Text>
+              <TextInput
+                style={styles.descriptionInput}
+                placeholder="Descreva o que você precisa..."
+                placeholderTextColor="#999"
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+                value={description}
+                onChangeText={setDescription}
+                editable={!submitting}
+              />
+            </ScrollView>
+
+            {/* Botões de Ação */}
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={() => setModalVisible(false)}
+                disabled={submitting}
+              >
+                <Text style={styles.cancelButtonText}>Cancelar</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.confirmButton,
+                  submitting && styles.confirmButtonDisabled,
+                ]}
+                onPress={handleConfirmBooking}
+                disabled={submitting}
+              >
+                {submitting ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <Text style={styles.confirmButtonText}>Confirmar</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }

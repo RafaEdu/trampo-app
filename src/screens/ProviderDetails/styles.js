@@ -220,6 +220,103 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     fontStyle: "italic",
   },
+
+  /* 5. MODAL DE AGENDAMENTO */
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end",
+  },
+  modalContent: {
+    backgroundColor: "#FFF",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 24,
+    maxHeight: "85%",
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#1F2937",
+  },
+  modalServiceName: {
+    fontSize: 15,
+    color: "#007AFF",
+    fontWeight: "600",
+    marginBottom: 20,
+  },
+  modalLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#374151",
+    marginBottom: 8,
+    marginTop: 16,
+  },
+  datePickerButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F3F4F6",
+    borderRadius: 10,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  datePickerText: {
+    marginLeft: 10,
+    fontSize: 15,
+    color: "#333",
+  },
+  descriptionInput: {
+    backgroundColor: "#F3F4F6",
+    borderRadius: 10,
+    padding: 14,
+    fontSize: 15,
+    color: "#333",
+    minHeight: 100,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  modalActions: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 24,
+    gap: 12,
+  },
+  cancelButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 10,
+    backgroundColor: "#F3F4F6",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  cancelButtonText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#6B7280",
+  },
+  confirmButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 10,
+    backgroundColor: "#007AFF",
+    alignItems: "center",
+  },
+  confirmButtonDisabled: {
+    opacity: 0.6,
+  },
+  confirmButtonText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#FFF",
+  },
 });
 
 export default styles;
