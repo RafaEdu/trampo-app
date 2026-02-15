@@ -9,7 +9,7 @@ import {
   Platform,
   ActivityIndicator,
 } from "react-native";
-import { useRoute } from "@react-navigation/native";
+import { useRoute, useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../contexts/AuthContext";
 import { supabase } from "../../services/supabaseClient";
@@ -17,7 +17,13 @@ import { styles } from "./styles";
 
 export default function ChatScreen() {
   const route = useRoute();
-  const { conversationId, otherUserName } = route.params;
+  const navigation = useNavigation();
+  const {
+    conversationId,
+    otherUserName,
+    serviceName,
+    fromDashboard,
+  } = route.params;
   const { user } = useAuth();
 
   const [messages, setMessages] = useState([]);
@@ -25,6 +31,14 @@ export default function ChatScreen() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const flatListRef = useRef(null);
+
+  const handleBack = () => {
+    if (fromDashboard) {
+      navigation.navigate("Início");
+    } else {
+      navigation.goBack();
+    }
+  };
 
   useEffect(() => {
     fetchMessages();
@@ -190,9 +204,26 @@ export default function ChatScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      behavior="padding"
       keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
     >
+      {/* Header personalizado */}
+      <View style={styles.chatHeader}>
+        <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color="#007AFF" />
+        </TouchableOpacity>
+        <View style={styles.headerInfo}>
+          <Text style={styles.headerName} numberOfLines={1}>
+            {otherUserName}
+          </Text>
+          {serviceName && (
+            <Text style={styles.headerService} numberOfLines={1}>
+              {serviceName}
+            </Text>
+          )}
+        </View>
+      </View>
+
       <FlatList
         ref={flatListRef}
         data={messages}

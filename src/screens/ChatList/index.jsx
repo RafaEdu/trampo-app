@@ -174,6 +174,7 @@ export default function ChatListScreen() {
           conversationId: item.id,
           bookingId: item.booking_id,
           otherUserName: item.otherUser.full_name,
+          serviceName: item.serviceName,
         })
       }
     >

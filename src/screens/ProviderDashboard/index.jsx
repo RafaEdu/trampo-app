@@ -129,11 +129,17 @@ export default function ProviderDashboard() {
   };
 
   const handleNegotiate = async (booking) => {
+    const chatParams = {
+      bookingId: booking.booking_id,
+      otherUserName: booking.client_full_name || "Cliente",
+      serviceName: booking.service_name || "Serviço",
+      fromDashboard: true,
+    };
+
     if (booking.conversation_id) {
-      navigation.navigate("ChatScreen", {
-        conversationId: booking.conversation_id,
-        bookingId: booking.booking_id,
-        otherUserName: booking.client_full_name || "Cliente",
+      navigation.navigate("Mensagens", {
+        screen: "ChatScreen",
+        params: { conversationId: booking.conversation_id, ...chatParams },
       });
       return;
     }
@@ -149,15 +155,43 @@ export default function ProviderDashboard() {
       return;
     }
 
-    navigation.navigate("ChatScreen", {
-      conversationId: data.id,
-      bookingId: booking.booking_id,
-      otherUserName: booking.client_full_name || "Cliente",
+    navigation.navigate("Mensagens", {
+      screen: "ChatScreen",
+      params: { conversationId: data.id, ...chatParams },
     });
   };
 
   const handleOpenChat = async (booking) => {
-    await handleNegotiate(booking);
+    const chatParams = {
+      bookingId: booking.booking_id,
+      otherUserName: booking.client_full_name || "Cliente",
+      serviceName: booking.service_name || "Serviço",
+      fromDashboard: true,
+    };
+
+    if (booking.conversation_id) {
+      navigation.navigate("Mensagens", {
+        screen: "ChatScreen",
+        params: { conversationId: booking.conversation_id, ...chatParams },
+      });
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("conversations")
+      .insert({ booking_id: booking.booking_id })
+      .select()
+      .single();
+
+    if (error) {
+      Alert.alert("Erro", "Não foi possível abrir o chat.");
+      return;
+    }
+
+    navigation.navigate("Mensagens", {
+      screen: "ChatScreen",
+      params: { conversationId: data.id, ...chatParams },
+    });
   };
 
   // ==========================================

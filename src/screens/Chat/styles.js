@@ -1,4 +1,4 @@
-import { StyleSheet } from "react-native";
+import { StyleSheet, Platform, StatusBar } from "react-native";
 
 export const styles = StyleSheet.create({
   container: {
@@ -11,6 +11,36 @@ export const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#F2F4F7",
   },
+
+  /* Header personalizado */
+  chatHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight + 12 : 56,
+    paddingBottom: 12,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E7EB",
+  },
+  backButton: {
+    padding: 8,
+    marginRight: 4,
+  },
+  headerInfo: {
+    flex: 1,
+  },
+  headerName: {
+    fontSize: 17,
+    fontWeight: "600",
+    color: "#1F2937",
+  },
+  headerService: {
+    fontSize: 13,
+    color: "#007AFF",
+    marginTop: 2,
+  },
+
   messagesList: {
     paddingHorizontal: 12,
     paddingVertical: 16,
