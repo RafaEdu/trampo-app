@@ -209,6 +209,75 @@ COMMENT ON FUNCTION get_provider_bookings_with_distance(uuid)
 IS 'Retorna todos os bookings de um profissional com a distância calculada até cada cliente.';
 
 -- =====================================================
+-- 8. RPC: get_client_bookings_with_details
+-- Retorna bookings do cliente com dados do profissional,
+-- preço do serviço e distância
+-- =====================================================
+CREATE OR REPLACE FUNCTION get_client_bookings_with_details(client_uuid uuid)
+RETURNS TABLE (
+  booking_id bigint,
+  created_at timestamptz,
+  client_id uuid,
+  professional_id uuid,
+  service_id bigint,
+  status text,
+  description text,
+  scheduled_date timestamptz,
+  professional_full_name text,
+  professional_avatar_url text,
+  service_name text,
+  service_price numeric,
+  service_unit text,
+  distance_km float,
+  conversation_id bigint
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  client_geo geography;
+BEGIN
+  -- Localização do cliente
+  SELECT p.location::geography INTO client_geo
+  FROM public.profiles p
+  WHERE p.id = client_uuid;
+
+  RETURN QUERY
+  SELECT
+    b.id AS booking_id,
+    b.created_at,
+    b.client_id,
+    b.professional_id,
+    b.service_id,
+    b.status,
+    b.description,
+    b.scheduled_date,
+    pp.full_name AS professional_full_name,
+    pp.avatar_url AS professional_avatar_url,
+    s.name AS service_name,
+    ps.price AS service_price,
+    ps.unit::text AS service_unit,
+    CASE
+      WHEN client_geo IS NOT NULL AND pp.location IS NOT NULL
+      THEN (ST_Distance(pp.location::geography, client_geo) / 1000)::float
+      ELSE NULL
+    END AS distance_km,
+    c.id AS conversation_id
+  FROM public.bookings b
+  LEFT JOIN public.profiles pp ON pp.id = b.professional_id
+  LEFT JOIN public.services s ON s.id = b.service_id
+  LEFT JOIN public.professional_services ps
+    ON ps.professional_id = b.professional_id AND ps.service_id = b.service_id
+  LEFT JOIN public.conversations c ON c.booking_id = b.id
+  WHERE b.client_id = client_uuid
+  ORDER BY b.created_at DESC;
+END;
+$$;
+
+COMMENT ON FUNCTION get_client_bookings_with_details(uuid)
+IS 'Retorna todos os bookings de um cliente com dados do profissional, preço e distância.';
+
+-- =====================================================
 -- 7. REALTIME: habilitar na tabela messages
 -- =====================================================
 ALTER PUBLICATION supabase_realtime ADD TABLE public.messages;
