@@ -6,27 +6,35 @@ export function useUnreadMessages() {
   const { user } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
 
+  const userId = user?.id;
+
   const fetchUnreadCount = useCallback(async () => {
-    if (!user) return;
+    if (!userId) {
+      setUnreadCount(0);
+      return;
+    }
 
     const { count, error } = await supabase
       .from("messages")
       .select("id", { count: "exact", head: true })
       .eq("read", false)
-      .neq("sender_id", user.id);
+      .neq("sender_id", userId);
 
     if (!error) {
       setUnreadCount(count || 0);
     }
-  }, [user]);
+  }, [userId]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!userId) {
+      setUnreadCount(0);
+      return;
+    }
 
     fetchUnreadCount();
 
     const channel = supabase
-      .channel("unread-messages-count")
+      .channel(`unread-messages-${userId}`)
       .on(
         "postgres_changes",
         {
@@ -43,7 +51,7 @@ export function useUnreadMessages() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, fetchUnreadCount]);
+  }, [userId, fetchUnreadCount]);
 
   return unreadCount;
 }

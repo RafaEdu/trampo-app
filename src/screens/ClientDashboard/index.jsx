@@ -76,6 +76,8 @@ export default function ClientDashboard() {
   const [confirmedBookings, setConfirmedBookings] = useState([]);
   const [cancelledBookings, setCancelledBookings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [proposalsExpanded, setProposalsExpanded] = useState(true);
+  const [confirmedExpanded, setConfirmedExpanded] = useState(false);
   const [cancelledExpanded, setCancelledExpanded] = useState(false);
 
   useFocusEffect(
@@ -370,27 +372,6 @@ export default function ClientDashboard() {
   );
 
   // ==========================================
-  // RENDER: Seção normal
-  // ==========================================
-  const renderSection = (title, icon, items, renderCard, emptyMessage) => (
-    <View style={styles.section}>
-      <View style={styles.sectionHeader}>
-        <Ionicons name={icon} size={20} color="#007AFF" />
-        <Text style={styles.sectionTitle}>{title}</Text>
-        <View style={styles.sectionCount}>
-          <Text style={styles.sectionCountText}>{items.length}</Text>
-        </View>
-      </View>
-
-      {items.length === 0 ? (
-        <Text style={styles.emptyText}>{emptyMessage}</Text>
-      ) : (
-        items.map(renderCard)
-      )}
-    </View>
-  );
-
-  // ==========================================
   // RENDER: Seção colapsável
   // ==========================================
   const renderCollapsibleSection = (
@@ -443,7 +424,7 @@ export default function ClientDashboard() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Meus Trampos</Text>
+        <Text style={styles.headerTitle}>TrampoApp</Text>
         <Text style={styles.headerSubtitle}>
           Olá, {profile?.full_name || "Contratante"}
         </Text>
@@ -453,20 +434,24 @@ export default function ClientDashboard() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {renderSection(
+        {renderCollapsibleSection(
           "Propostas enviadas",
           "paper-plane",
           proposalBookings,
           renderProposalCard,
           "Nenhuma proposta enviada.",
+          proposalsExpanded,
+          () => setProposalsExpanded((prev) => !prev),
         )}
 
-        {renderSection(
+        {renderCollapsibleSection(
           "Trampos contratados",
           "checkmark-circle",
           confirmedBookings,
           renderConfirmedCard,
           "Nenhum trampo contratado.",
+          confirmedExpanded,
+          () => setConfirmedExpanded((prev) => !prev),
         )}
 
         {renderCollapsibleSection(

@@ -69,6 +69,9 @@ export default function ProviderDashboard() {
   const [pendingBookings, setPendingBookings] = useState([]);
   const [historyBookings, setHistoryBookings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [pendingExpanded, setPendingExpanded] = useState(true);
+  const [confirmedExpanded, setConfirmedExpanded] = useState(false);
+  const [historyExpanded, setHistoryExpanded] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -412,23 +415,44 @@ export default function ProviderDashboard() {
   );
 
   // ==========================================
-  // RENDER: Seção
+  // RENDER: Seção colapsável
   // ==========================================
-  const renderSection = (title, icon, items, renderCard, emptyMessage) => (
+  const renderCollapsibleSection = (
+    title,
+    icon,
+    items,
+    renderCard,
+    emptyMessage,
+    expanded,
+    toggleExpanded,
+  ) => (
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
-        <Ionicons name={icon} size={20} color="#007AFF" />
-        <Text style={styles.sectionTitle}>{title}</Text>
-        <View style={styles.sectionCount}>
-          <Text style={styles.sectionCountText}>{items.length}</Text>
-        </View>
+        <TouchableOpacity
+          style={styles.sectionHeaderPressable}
+          onPress={toggleExpanded}
+          activeOpacity={0.7}
+        >
+          <Ionicons name={icon} size={20} color="#007AFF" />
+          <Text style={styles.sectionTitle}>{title}</Text>
+          <View style={styles.sectionCount}>
+            <Text style={styles.sectionCountText}>{items.length}</Text>
+          </View>
+          <Ionicons
+            name={expanded ? "chevron-up" : "chevron-down"}
+            size={18}
+            color="#6B7280"
+            style={styles.collapseIcon}
+          />
+        </TouchableOpacity>
       </View>
 
-      {items.length === 0 ? (
-        <Text style={styles.emptyText}>{emptyMessage}</Text>
-      ) : (
-        items.map(renderCard)
-      )}
+      {expanded &&
+        (items.length === 0 ? (
+          <Text style={styles.emptyText}>{emptyMessage}</Text>
+        ) : (
+          items.map(renderCard)
+        ))}
     </View>
   );
 
@@ -443,35 +467,41 @@ export default function ProviderDashboard() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Meus Trampos</Text>
+        <Text style={styles.headerTitle}>TrampoApp</Text>
       </View>
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {renderSection(
-          "Trampos confirmados",
-          "checkmark-circle",
-          confirmedBookings,
-          renderConfirmedCard,
-          "Nenhum trampo confirmado.",
-        )}
-
-        {renderSection(
+        {renderCollapsibleSection(
           "Aguardando resposta",
           "time",
           pendingBookings,
           renderPendingCard,
           "Nenhum pedido pendente.",
+          pendingExpanded,
+          () => setPendingExpanded((prev) => !prev),
         )}
 
-        {renderSection(
+        {renderCollapsibleSection(
+          "Trampos confirmados",
+          "checkmark-circle",
+          confirmedBookings,
+          renderConfirmedCard,
+          "Nenhum trampo confirmado.",
+          confirmedExpanded,
+          () => setConfirmedExpanded((prev) => !prev),
+        )}
+
+        {renderCollapsibleSection(
           "Últimos trampos",
           "archive",
           historyBookings,
           renderHistoryCard,
           "Nenhum histórico ainda.",
+          historyExpanded,
+          () => setHistoryExpanded((prev) => !prev),
         )}
       </ScrollView>
     </View>

@@ -26,6 +26,7 @@ export default function ChatListScreen() {
   );
 
   const fetchConversations = async () => {
+    if (!user?.id) return;
     setLoading(true);
 
     const { data, error } = await supabase
@@ -70,10 +71,10 @@ export default function ChatListScreen() {
           .select("id", { count: "exact", head: true })
           .eq("conversation_id", conv.id)
           .eq("read", false)
-          .neq("sender_id", user.id);
+          .neq("sender_id", user?.id);
 
         // Identificar o outro participante
-        const isProvider = conv.bookings?.professional_id === user.id;
+        const isProvider = conv.bookings?.professional_id === user?.id;
         const otherUserId = isProvider
           ? conv.bookings?.client_id
           : conv.bookings?.professional_id;
@@ -219,7 +220,7 @@ export default function ChatListScreen() {
         <View style={styles.bottomRow}>
           <Text style={styles.lastMessage} numberOfLines={1}>
             {item.lastMessage
-              ? item.lastMessage.sender_id === user.id
+              ? item.lastMessage.sender_id === user?.id
                 ? `Você: ${item.lastMessage.content}`
                 : item.lastMessage.content
               : "Nenhuma mensagem ainda"}

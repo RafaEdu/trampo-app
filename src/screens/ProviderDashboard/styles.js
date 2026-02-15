@@ -41,6 +41,14 @@ export const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 12,
   },
+  sectionHeaderPressable: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  collapseIcon: {
+    marginLeft: 8,
+  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: "bold",

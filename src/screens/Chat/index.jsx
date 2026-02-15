@@ -22,7 +22,6 @@ export default function ChatScreen() {
     conversationId,
     otherUserName,
     serviceName,
-    fromDashboard,
   } = route.params;
   const { user } = useAuth();
 
@@ -33,11 +32,7 @@ export default function ChatScreen() {
   const flatListRef = useRef(null);
 
   const handleBack = () => {
-    if (fromDashboard) {
-      navigation.navigate("Início");
-    } else {
-      navigation.goBack();
-    }
+    navigation.goBack();
   };
 
   useEffect(() => {
