@@ -78,7 +78,7 @@ export default function ChatScreen() {
         (payload) => {
           setMessages((prev) => [...prev, payload.new]);
 
-          if (payload.new.sender_id !== user.id) {
+          if (user?.id && payload.new.sender_id !== user.id) {
             supabase
               .from("messages")
               .update({ read: true })
@@ -164,6 +164,7 @@ export default function ChatScreen() {
   };
 
   const markMessagesAsRead = async () => {
+    if (!user?.id) return;
     await supabase
       .from("messages")
       .update({ read: true })
@@ -468,7 +469,7 @@ export default function ChatScreen() {
   // ==========================================
   const renderProposalBubble = (item) => {
     const proposal = proposals[item.id];
-    const isMe = item.sender_id === user.id;
+    const isMe = item.sender_id === user?.id;
     const isPending = proposal?.status === "pending";
     const isAccepted = proposal?.status === "accepted";
     const isRejected = proposal?.status === "rejected";
@@ -544,7 +545,7 @@ export default function ChatScreen() {
   // RENDER: Message
   // ==========================================
   const renderMessage = ({ item, index }) => {
-    const isMe = item.sender_id === user.id;
+    const isMe = item.sender_id === user?.id;
     const showDate = shouldShowDateSeparator(index);
     const isProposal = item.message_type === "proposal";
     const isAcceptMsg = item.message_type === "proposal_accepted";
