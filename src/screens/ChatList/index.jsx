@@ -40,6 +40,7 @@ export default function ChatListScreen() {
           client_id,
           professional_id,
           status,
+          chat_locked,
           services:service_id (name)
         )
       `,
@@ -93,6 +94,7 @@ export default function ChatListScreen() {
           otherUser: otherProfile || { full_name: "Usuário", avatar_url: null },
           serviceName: conv.bookings?.services?.name || "Serviço",
           bookingStatus: conv.bookings?.status,
+          chatLocked: conv.bookings?.chat_locked || false,
         };
       }),
     );
@@ -134,6 +136,7 @@ export default function ChatListScreen() {
   const getStatusLabel = (status) => {
     switch (status) {
       case "pending":
+      case "negotiating":
         return "Negociando";
       case "accepted":
         return "Confirmado";
@@ -151,6 +154,7 @@ export default function ChatListScreen() {
   const getStatusColor = (status) => {
     switch (status) {
       case "pending":
+      case "negotiating":
         return "#F59E0B";
       case "accepted":
         return "#34c759";
@@ -212,6 +216,14 @@ export default function ChatListScreen() {
               {getStatusLabel(item.bookingStatus)}
             </Text>
           </View>
+          {item.chatLocked && (
+            <Ionicons
+              name="lock-closed"
+              size={13}
+              color="#9CA3AF"
+              style={{ marginLeft: 6 }}
+            />
+          )}
           <Text style={styles.serviceLabel} numberOfLines={1}>
             {item.serviceName}
           </Text>

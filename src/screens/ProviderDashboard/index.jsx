@@ -95,7 +95,9 @@ export default function ProviderDashboard() {
 
     const all = data || [];
     setConfirmedBookings(all.filter((b) => b.status === "accepted"));
-    setPendingBookings(all.filter((b) => b.status === "pending"));
+    setPendingBookings(
+      all.filter((b) => b.status === "pending" || b.status === "negotiating"),
+    );
     setHistoryBookings(
       all.filter((b) =>
         ["completed", "cancelled", "rejected"].includes(b.status),
@@ -138,6 +140,20 @@ export default function ProviderDashboard() {
       serviceName: booking.service_name || "Serviço",
       fromDashboard: true,
     };
+
+    // Update booking status to "negotiating" if still pending
+    if (booking.status === "pending") {
+      const { error: updateError } = await supabase
+        .from("bookings")
+        .update({ status: "negotiating" })
+        .eq("id", booking.booking_id);
+
+      if (updateError) {
+        console.error("Erro ao atualizar status:", updateError.message);
+      } else {
+        fetchBookings();
+      }
+    }
 
     if (booking.conversation_id) {
       navigation.navigate("Mensagens", {
@@ -200,80 +216,96 @@ export default function ProviderDashboard() {
   // ==========================================
   // RENDER: Card pendente (aguardando)
   // ==========================================
-  const renderPendingCard = (item) => (
-    <View key={item.booking_id} style={styles.card}>
-      <View style={styles.cardHeader}>
-        <View style={styles.clientInfo}>
-          <Image
-            source={{
-              uri: item.client_avatar_url || "https://via.placeholder.com/40",
-            }}
-            style={styles.clientAvatar}
-          />
-          <View style={styles.clientTextInfo}>
-            <Text style={styles.clientName}>
-              {item.client_full_name || "Cliente"}
-            </Text>
-            <Text style={styles.sentDate}>
-              {formatRelativeDate(item.created_at)}
+  const renderPendingCard = (item) => {
+    const isNegotiating = item.status === "negotiating";
+
+    return (
+      <View key={item.booking_id} style={styles.card}>
+        <View style={styles.cardHeader}>
+          <View style={styles.clientInfo}>
+            <Image
+              source={{
+                uri: item.client_avatar_url || "https://via.placeholder.com/40",
+              }}
+              style={styles.clientAvatar}
+            />
+            <View style={styles.clientTextInfo}>
+              <Text style={styles.clientName}>
+                {item.client_full_name || "Cliente"}
+              </Text>
+              <Text style={styles.sentDate}>
+                {formatRelativeDate(item.created_at)}
+              </Text>
+            </View>
+          </View>
+          <View style={styles.distanceBadge}>
+            <Ionicons name="location-sharp" size={12} color="#FFF" />
+            <Text style={styles.distanceText}>
+              {formatDistance(item.distance_km)}
             </Text>
           </View>
         </View>
-        <View style={styles.distanceBadge}>
-          <Ionicons name="location-sharp" size={12} color="#FFF" />
-          <Text style={styles.distanceText}>
-            {formatDistance(item.distance_km)}
+
+        <View style={styles.serviceRow}>
+          <Ionicons name="construct-outline" size={16} color="#007AFF" />
+          <Text style={styles.serviceNameText}>
+            {item.service_name || "Serviço"}
           </Text>
         </View>
+
+        <View style={styles.scheduleRow}>
+          <Ionicons name="calendar-outline" size={16} color="#6B7280" />
+          <Text style={styles.scheduleText}>
+            Agendado para: {formatDateTime(item.scheduled_date)}
+          </Text>
+        </View>
+
+        {item.description && (
+          <Text style={styles.descriptionText} numberOfLines={3}>
+            {item.description}
+          </Text>
+        )}
+
+        {isNegotiating ? (
+          <View style={styles.buttonsRow}>
+            <TouchableOpacity
+              style={[styles.actionBtn, styles.btnNegotiate]}
+              onPress={() => handleNegotiate(item)}
+            >
+              <Ionicons name="chatbubble-outline" size={16} color="#FFF" />
+              <Text style={styles.btnText}>Negociar</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={styles.buttonsRow}>
+            <TouchableOpacity
+              style={[styles.actionBtn, styles.btnReject]}
+              onPress={() => handleUpdateStatus(item.booking_id, "rejected")}
+            >
+              <Ionicons name="close" size={16} color="#FFF" />
+              <Text style={styles.btnText}>Recusar</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.actionBtn, styles.btnNegotiate]}
+              onPress={() => handleNegotiate(item)}
+            >
+              <Ionicons name="chatbubble-outline" size={16} color="#FFF" />
+              <Text style={styles.btnText}>Negociar</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.actionBtn, styles.btnAccept]}
+              onPress={() => handleUpdateStatus(item.booking_id, "accepted")}
+            >
+              <Ionicons name="checkmark" size={16} color="#FFF" />
+              <Text style={styles.btnText}>Aceitar</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
-
-      <View style={styles.serviceRow}>
-        <Ionicons name="construct-outline" size={16} color="#007AFF" />
-        <Text style={styles.serviceNameText}>
-          {item.service_name || "Serviço"}
-        </Text>
-      </View>
-
-      <View style={styles.scheduleRow}>
-        <Ionicons name="calendar-outline" size={16} color="#6B7280" />
-        <Text style={styles.scheduleText}>
-          Agendado para: {formatDateTime(item.scheduled_date)}
-        </Text>
-      </View>
-
-      {item.description && (
-        <Text style={styles.descriptionText} numberOfLines={3}>
-          {item.description}
-        </Text>
-      )}
-
-      <View style={styles.buttonsRow}>
-        <TouchableOpacity
-          style={[styles.actionBtn, styles.btnReject]}
-          onPress={() => handleUpdateStatus(item.booking_id, "rejected")}
-        >
-          <Ionicons name="close" size={16} color="#FFF" />
-          <Text style={styles.btnText}>Recusar</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.actionBtn, styles.btnNegotiate]}
-          onPress={() => handleNegotiate(item)}
-        >
-          <Ionicons name="chatbubble-outline" size={16} color="#FFF" />
-          <Text style={styles.btnText}>Negociar</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.actionBtn, styles.btnAccept]}
-          onPress={() => handleUpdateStatus(item.booking_id, "accepted")}
-        >
-          <Ionicons name="checkmark" size={16} color="#FFF" />
-          <Text style={styles.btnText}>Aceitar</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
+    );
+  };
 
   // ==========================================
   // RENDER: Card confirmado
