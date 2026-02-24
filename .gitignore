@@ -46,3 +46,6 @@ Create_Table.md
 Triggers_Functions_Views.md
 Row_Level_Security.md
 Listagem_bancoSupabase.json
+
+./src/sql/chat_and_rpc.sql
+./src/sql/proposals_migration.sql
